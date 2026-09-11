@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from screencare.app.session import CHECKPOINT_MIN_INTERVAL_SECONDS, AppSession
-from screencare.domain.enums import FocusFeedback, FocusMode, FocusState
+from screencare.domain.enums import FocusFeedback, FocusMode, FocusState, PresenceState
 from screencare.notifications.base import InMemoryNotificationService
 from screencare.persistence.database import Database
 from screencare.persistence.repositories import (
@@ -27,8 +27,57 @@ from screencare.scheduler.clock import FakeClock
 from screencare.scheduler.scheduler import Scheduler
 
 
+class _FakeActivityProvider:
+    """A test double for :class:`~screencare.activity.base.ActivityProvider`
+    -- set ``idle_seconds``/``locked`` directly to simulate whatever the
+    real Windows adapter would report."""
+
+    def __init__(self, *, idle_seconds: float = 0.0, locked: bool = False) -> None:
+        self.idle_seconds_value = idle_seconds
+        self.locked = locked
+
+    def idle_seconds(self) -> float:
+        return self.idle_seconds_value
+
+    def is_locked(self) -> bool:
+        return self.locked
+
+
+class _FakePowerMonitor:
+    """A test double for :class:`~screencare.activity.base.PowerMonitor` --
+    captures the callbacks so a test can invoke ``fire_sleep()``/
+    ``fire_wake()`` directly instead of a real OS event."""
+
+    def __init__(self) -> None:
+        self.started = False
+        self.stopped = False
+        self._on_sleep = lambda: None
+        self._on_wake = lambda: None
+
+    def start(self, *, on_sleep, on_wake) -> None:
+        self.started = True
+        self._on_sleep = on_sleep
+        self._on_wake = on_wake
+
+    def stop(self) -> None:
+        self.stopped = True
+
+    def fire_sleep(self) -> None:
+        self._on_sleep()
+
+    def fire_wake(self) -> None:
+        self._on_wake()
+
+
 class _Harness:
-    def __init__(self, configure_settings=None) -> None:
+    def __init__(
+        self,
+        configure_settings=None,
+        *,
+        activity_provider=None,
+        power_monitor=None,
+        idle_threshold_seconds: float = 90.0,
+    ) -> None:
         self.clock = FakeClock()
         self.scheduler = Scheduler(self.clock)
         self.db = Database.open_in_memory(clock=self.clock)
@@ -51,6 +100,9 @@ class _Harness:
             idea_walk_note_repo=IdeaWalkNoteRepository(self.db.connection, self.clock),
             snapshot_repo=SessionSnapshotRepository(self.db.connection),
             notifier=self.notifier,
+            activity_provider=activity_provider,
+            power_monitor=power_monitor,
+            idle_threshold_seconds=idle_threshold_seconds,
             on_changed=self._on_changed,
         )
 
@@ -423,3 +475,167 @@ def test_on_changed_fires_for_every_lifecycle_transition(h: _Harness) -> None:
     before = h.changed_count
     h.session.start_focus(FocusMode.CLASSIC)
     assert h.changed_count > before
+
+
+# -- presence: idle / lock / sleep-wake (Phase 5) ------------------------------
+
+
+def test_going_idle_while_focusing_freezes_the_countdown() -> None:
+    provider = _FakeActivityProvider(idle_seconds=0)
+    h = _Harness(activity_provider=provider, idle_threshold_seconds=90)
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+    remaining_before = h.session.remaining_seconds
+
+    provider.idle_seconds_value = 90
+    h.session.tick()  # presence -> IDLE detected right away, freezing the budget
+    assert h.session.presence is PresenceState.IDLE
+
+    h.clock.advance(minutes=10)  # this time must not count against the timer
+    h.session.tick()
+
+    assert h.session.remaining_seconds == remaining_before
+    h.close()
+
+
+def test_returning_from_a_long_idle_period_credits_an_away_break() -> None:
+    provider = _FakeActivityProvider(idle_seconds=0)
+    h = _Harness(activity_provider=provider, idle_threshold_seconds=90)
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+
+    provider.idle_seconds_value = 90
+    h.session.tick()  # IDLE detected right away
+    assert h.session.presence is PresenceState.IDLE
+
+    h.clock.advance(minutes=5)  # away for 5 minutes, well over the break threshold
+    provider.idle_seconds_value = 0  # user is back
+    h.session.tick()
+
+    assert h.session.presence is PresenceState.ACTIVE
+    breaks = BreakSessionRepository(h.db.connection, h.clock).list_recent()
+    assert len(breaks) == 1
+    assert breaks[0].completion_source.value == "idle_detected"
+    h.close()
+
+
+def test_a_brief_idle_blip_below_the_break_threshold_is_not_credited() -> None:
+    # AWAY_QUALIFIES_AS_BREAK_SECONDS is 180s; go idle for less than that.
+    provider = _FakeActivityProvider(idle_seconds=0)
+    h = _Harness(activity_provider=provider, idle_threshold_seconds=90)
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+
+    provider.idle_seconds_value = 90
+    h.session.tick()  # IDLE detected right away
+    h.clock.advance(seconds=100)  # less than the 180s break-qualifying threshold
+    provider.idle_seconds_value = 0
+    h.session.tick()
+
+    assert BreakSessionRepository(h.db.connection, h.clock).list_recent() == []
+    h.close()
+
+
+def test_locked_freezes_the_countdown_like_idle_does() -> None:
+    provider = _FakeActivityProvider(locked=False)
+    h = _Harness(activity_provider=provider)
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+    remaining_before = h.session.remaining_seconds
+
+    provider.locked = True
+    h.session.tick()  # LOCKED detected right away
+    assert h.session.presence is PresenceState.LOCKED
+
+    h.clock.advance(minutes=20)  # this time must not count against the timer
+    h.session.tick()
+
+    assert h.session.remaining_seconds == remaining_before
+    h.close()
+
+
+def test_presence_never_disturbs_a_deliberately_paused_session() -> None:
+    provider = _FakeActivityProvider(idle_seconds=0)
+    h = _Harness(activity_provider=provider, idle_threshold_seconds=90)
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+    h.session.pause()
+
+    provider.idle_seconds_value = 90  # away while paused
+    h.session.tick()
+    h.clock.advance(minutes=5)
+    provider.idle_seconds_value = 0  # back while still paused
+    h.session.tick()
+
+    assert h.session.focus_state is FocusState.PAUSED  # pause() itself owns this, untouched
+    h.close()
+
+
+def test_idea_walk_owns_hydration_freeze_even_through_a_presence_change() -> None:
+    provider = _FakeActivityProvider(idle_seconds=0)
+    h = _Harness(activity_provider=provider, idle_threshold_seconds=90)
+    h.settings.hydration_interval_minutes = 30
+    h.session.apply_settings_changed()
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+    h.session.start_idea_walk()
+    hydration_before = h.session.hydration_seconds_until_due
+
+    provider.idle_seconds_value = 90  # walking away from the computer
+    h.session.tick()
+    h.clock.advance(minutes=35)
+    provider.idle_seconds_value = 0
+    h.session.tick()
+
+    # Hydration is still frozen (idea walk owns it) -- presence changes must
+    # not have prematurely resumed it while still mid-walk.
+    assert h.session.hydration_seconds_until_due == hydration_before
+    h.close()
+
+
+def test_platform_sleep_and_wake_drive_presence() -> None:
+    power_monitor = _FakePowerMonitor()
+    h = _Harness(power_monitor=power_monitor)
+    h.session.begin()
+    assert power_monitor.started is True
+
+    h.session.start_focus(FocusMode.CLASSIC)
+    remaining_before = h.session.remaining_seconds
+
+    power_monitor.fire_sleep()
+    assert h.session.presence is PresenceState.SLEEPING
+
+    h.clock.advance(hours=8)  # the laptop lid was closed all night
+    power_monitor.fire_wake()
+
+    assert h.session.presence is PresenceState.ACTIVE  # no provider -> polls back to ACTIVE
+    assert h.session.remaining_seconds == remaining_before  # the 8 hours was never counted
+    h.close()
+
+
+def test_shutdown_stops_the_power_monitor() -> None:
+    power_monitor = _FakePowerMonitor()
+    h = _Harness(power_monitor=power_monitor)
+    h.session.begin()
+    h.session.shutdown()
+    assert power_monitor.stopped is True
+    h.close()
+
+
+def test_a_failing_activity_provider_disables_away_detection_without_crashing() -> None:
+    class _BrokenProvider:
+        def idle_seconds(self) -> float:
+            raise OSError("no permission")
+
+        def is_locked(self) -> bool:
+            raise OSError("no permission")
+
+    h = _Harness(activity_provider=_BrokenProvider())
+    h.session.begin()
+    h.session.start_focus(FocusMode.CLASSIC)
+    h.clock.advance(minutes=1)
+    h.session.tick()  # must not raise
+
+    assert h.session.presence is PresenceState.ACTIVE
+    h.close()
+    h.close()

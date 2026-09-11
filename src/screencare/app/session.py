@@ -18,6 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
+from screencare.activity.base import ActivityProvider, PowerMonitor
+from screencare.activity.presence_monitor import DEFAULT_IDLE_THRESHOLD_SECONDS, PresenceMonitor
 from screencare.domain.enums import (
     BreakCompletionSource,
     BreakKind,
@@ -25,6 +27,7 @@ from screencare.domain.enums import (
     FocusMode,
     FocusState,
     NotificationPriority,
+    PresenceState,
 )
 from screencare.domain.models import (
     ADAPTIVE_DEFAULT_RECOVERY_SECONDS,
@@ -90,6 +93,9 @@ class AppSession:
         idea_walk_note_repo: IdeaWalkNoteRepository,
         snapshot_repo: SessionSnapshotRepository,
         notifier: NotificationService,
+        activity_provider: ActivityProvider | None = None,
+        power_monitor: PowerMonitor | None = None,
+        idle_threshold_seconds: float = DEFAULT_IDLE_THRESHOLD_SECONDS,
         on_changed: Callable[[], None] | None = None,
     ) -> None:
         self._clock = clock
@@ -101,6 +107,12 @@ class AppSession:
         self._idea_walk_note_repo = idea_walk_note_repo
         self._snapshot_repo = snapshot_repo
         self._notifier = notifier
+        self._power_monitor = power_monitor
+        self._presence_monitor = PresenceMonitor(
+            provider=activity_provider, idle_threshold_seconds=idle_threshold_seconds
+        )
+        self._presence = PresenceState.ACTIVE
+        self._power_monitor_started = False
         self._on_changed = on_changed or (lambda: None)
 
         self._adaptive = AdaptiveFocusEngine(initial_seconds=settings.focus_minutes * 60)
@@ -162,11 +174,40 @@ class AppSession:
         if not self._started:
             self._hydration.start()
             self._started = True
+        self._maybe_start_power_monitor()
+
+    def attach_platform_adapters(
+        self,
+        *,
+        activity_provider: ActivityProvider | None = None,
+        power_monitor: PowerMonitor | None = None,
+    ) -> None:
+        """Attach platform adapters discovered *after* construction. The
+        real app can only build the Windows session monitor once the QML
+        root window exists (it needs a native window handle to register
+        for session notifications), which is after ``AppSession`` itself
+        is built and :meth:`begin` has already run -- so this is the hook
+        ``bootstrap.py`` calls once that window is available. Safe to call
+        with either argument, or both, at most once each."""
+        if activity_provider is not None:
+            self._presence_monitor.set_provider(activity_provider)
+        if power_monitor is not None:
+            self._power_monitor = power_monitor
+            self._maybe_start_power_monitor()
+
+    def _maybe_start_power_monitor(self) -> None:
+        if self._power_monitor is not None and not self._power_monitor_started:
+            self._power_monitor.start(
+                on_sleep=self.on_platform_sleep, on_wake=self.on_platform_wake
+            )
+            self._power_monitor_started = True
 
     def shutdown(self) -> None:
         """Persist a final checkpoint before the process exits
         (Technical.md §18: "Explicit Quit: persist state ... exit process").
         """
+        if self._power_monitor is not None:
+            self._power_monitor.stop()
         self._checkpoint(force=True)
 
     # -- read-only state exposed to view models ------------------------------
@@ -221,6 +262,10 @@ class AppSession:
         return self._adaptive.current_duration_seconds
 
     @property
+    def presence(self) -> PresenceState:
+        return self._presence
+
+    @property
     def is_quiet(self) -> bool:
         return self._quiet_until_utc is not None and self._clock.utc_now() < self._quiet_until_utc
 
@@ -246,6 +291,79 @@ class AppSession:
     def exit_quiet_mode(self) -> None:
         self._quiet_until_utc = None
         self._changed()
+
+    # -- presence (Phase 5: idle / lock / sleep-wake) --------------------------
+
+    def on_platform_sleep(self) -> None:
+        """Called by the platform power monitor right before the system
+        suspends. Persist first (``ScreenCare — Technical.md`` section 12:
+        "1. Persist current state."), then mark presence -- so a crash
+        during suspend still leaves a recoverable snapshot, and no ticks
+        that occur while suspended (there generally aren't any) could ever
+        be mistaken for focus time."""
+        self._checkpoint(force=True)
+        self._presence_monitor.mark_sleeping()
+        self._apply_presence(PresenceState.SLEEPING)
+
+    def on_platform_wake(self) -> None:
+        """Called right after the system resumes. Queries the *real*
+        idle/lock state rather than assuming ``ACTIVE`` (Technical.md
+        section 12: "3. Query actual idle state.")."""
+        self._presence_monitor.mark_awake()
+        self._apply_presence(self._presence_monitor.poll())
+
+    def _apply_presence(self, new_presence: PresenceState) -> None:
+        """The single place presence transitions are applied, whether
+        discovered by polling (:meth:`tick`) or pushed by a platform event
+        (sleep/wake above). Freezing/resuming hydration and eye-rest mirror
+        what :meth:`start_idea_walk` already does explicitly, but are
+        skipped during an idea walk (which owns that freeze/thaw itself)
+        and eye-rest is skipped unless actually focusing (pausing already
+        freezes it independently, and presence must not un-freeze a
+        deliberately paused session)."""
+        if new_presence == self._presence:
+            return
+        was_active = self._presence is PresenceState.ACTIVE
+        now_active = new_presence is PresenceState.ACTIVE
+        in_idea_walk = self._focus.state is FocusState.IDEA_WALK
+        is_focusing = self._focus.state is FocusState.FOCUSING
+
+        if was_active and not now_active:
+            if not in_idea_walk:
+                self._hydration.freeze()
+            if is_focusing:
+                self._eye_rest.freeze()
+
+        away_seconds = self._focus.on_presence_changed(new_presence)
+        self._presence = new_presence
+
+        if not was_active and now_active:
+            if not in_idea_walk:
+                self._hydration.resume()
+            if is_focusing:
+                self._eye_rest.resume()
+            if away_seconds and self._break_engine.qualifies_as_break(away_seconds):
+                self._record_away_break(away_seconds)
+
+        self._checkpoint(force=True)
+        self._changed()
+
+    def _record_away_break(self, away_seconds: float) -> None:
+        """An idle/locked/sleeping period long enough to qualify as a real
+        computer break, credited automatically -- never claimed as a "walk
+        completed" (``ScreenCare — Technical.md`` section 14), just an
+        away-from-computer break."""
+        ended_at = self._clock.utc_now()
+        away_int = int(away_seconds)
+        self._break_repo.insert(
+            BreakSession(
+                kind=BreakKind.AWAY,
+                started_at_utc=ended_at - timedelta(seconds=away_int),
+                ended_at_utc=ended_at,
+                away_seconds=away_int,
+                completion_source=BreakCompletionSource.IDLE_DETECTED,
+            )
+        )
 
     # -- focus lifecycle ------------------------------------------------------
 
@@ -394,6 +512,12 @@ class AppSession:
     # -- driving the scheduler --------------------------------------------------
 
     def tick(self) -> None:
+        # Polling every tick (rather than only reacting to platform events)
+        # is also the fallback for a missed sleep/wake or lock/unlock event
+        # (Technical.md §41: "the scheduler must still notice a large
+        # discrepancy ... and trigger reconciliation") -- the next real
+        # tick after any gap re-queries actual idle/lock state.
+        self._apply_presence(self._presence_monitor.poll())
         fired = self._scheduler.tick()
         if fired:
             self._checkpoint_dirty = True

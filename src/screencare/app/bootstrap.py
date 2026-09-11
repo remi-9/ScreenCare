@@ -41,6 +41,7 @@ from screencare.persistence.repositories import (
 )
 from screencare.persistence.session_recovery import RecoveryAction, SessionSnapshotRepository
 from screencare.persistence.settings import AppSettings, QSettingsBackend
+from screencare.platform.factory import PlatformAdapters, build_platform_adapters
 from screencare.scheduler.clock import Clock, SystemClock
 from screencare.scheduler.scheduler import Scheduler
 from screencare.ui.viewmodels.break_view_model import BreakViewModel
@@ -155,6 +156,20 @@ def create_engine(
     context.setContextProperty("trayAvailable", tray_available)
     engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
     return engine
+
+
+def _sync_autostart(adapters: PlatformAdapters, settings: AppSettings) -> None:
+    """Make the real Windows autostart entry match the stored preference.
+    Previous phases only round-tripped ``launch_at_login`` as a setting;
+    this is what actually registers/removes it (Phase 5). Never raises --
+    an unavailable or failing autostart adapter must not crash the app
+    (``Technical.md`` section 41)."""
+    if adapters.autostart_service is None:
+        return
+    try:
+        adapters.autostart_service.set_enabled(settings.launch_at_login)
+    except OSError:
+        logger.exception("Failed to sync the Windows autostart entry")
 
 
 def _wire_tray_menu(
@@ -276,9 +291,16 @@ def run(argv: list[str]) -> int:
     break_vm = BreakViewModel(app_session)
     view_models.extend([focus_vm, break_vm])
 
-    settings_vm = SettingsViewModel(
-        settings, on_settings_changed=app_session.apply_settings_changed
-    )
+    # Filled in once the root window exists, below; a settings change before
+    # then (unlikely -- QML hasn't loaded yet) just skips the autostart sync.
+    adapters_holder: list[PlatformAdapters] = []
+
+    def _on_settings_changed() -> None:
+        app_session.apply_settings_changed()
+        if adapters_holder:
+            _sync_autostart(adapters_holder[0], settings)
+
+    settings_vm = SettingsViewModel(settings, on_settings_changed=_on_settings_changed)
     dashboard_vm = DashboardViewModel(
         clock=SystemClock(),
         focus_repo=FocusSessionRepository(database.connection, SystemClock()),
@@ -301,6 +323,16 @@ def run(argv: list[str]) -> int:
         return 1
 
     root_window = engine.rootObjects()[0]
+
+    # Built here rather than alongside app_session: the Windows adapter
+    # needs the QML root window's native handle to register for
+    # session-change notifications (Phase 5 -- idle/lock/sleep-wake).
+    adapters = build_platform_adapters(root_window)
+    adapters_holder.append(adapters)
+    app_session.attach_platform_adapters(
+        activity_provider=adapters.activity_provider, power_monitor=adapters.power_monitor
+    )
+    _sync_autostart(adapters, settings)
 
     def _show_window() -> None:
         root_window.show()

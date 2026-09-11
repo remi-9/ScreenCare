@@ -262,8 +262,75 @@ Design points:
   automatic LOCKED/SLEEPING/IDLE-based suppression are explicitly Phase 5+
   (`Technical.md` §45's "later" list).
 
-Everything else — `activity/`, `platform/` — still exists only as an empty
-package with a docstring noting which phase implements it.
+### Phase 5 — first platform integration (Windows)
+
+```text
+src/screencare/activity/
+├── base.py               ActivityProvider / PowerMonitor / AutostartService protocols, PlatformCapabilities
+└── presence_monitor.py    PresenceMonitor — Qt-free idle/lock/sleep decision logic
+
+src/screencare/platform/
+├── windows.py             WindowsActivityProvider, WindowsSessionMonitor, WindowsAutostartService (ctypes/winreg)
+└── factory.py             build_platform_adapters() — the one sys.platform branch
+```
+
+Design points:
+
+- **Same Qt-free split as `AppSession` itself.** `PresenceMonitor` only
+  depends on the `ActivityProvider` protocol, so the idle/lock/sleep
+  decision table (`Technical.md` §13) is fully unit-tested with a fake
+  provider — no real Windows or PySide6 needed for that logic. The
+  concrete `WindowsActivityProvider`/`WindowsSessionMonitor` (ctypes
+  `GetLastInputInfo`, `WTSRegisterSessionNotification` +
+  `WM_WTSSESSION_CHANGE`, `WM_POWERBROADCAST`, all constants verified
+  against current Microsoft Learn docs rather than guessed) can only run
+  on real Windows, so they're the one part of this phase that needs the
+  user's machine to actually exercise.
+- **`AppSession` polls presence every `tick()`** (not just on platform
+  events) — cheap, and it doubles as the `Technical.md` §41 "missed
+  event" reconciliation: if a sleep/wake or lock/unlock notification is
+  somehow missed, the next real tick re-queries actual idle/lock state
+  anyway. Sleep/wake are *also* pushed immediately via
+  `AppSession.on_platform_sleep()`/`on_platform_wake()` (called by
+  `WindowsSessionMonitor`'s native event filter, on the Qt main thread —
+  no extra thread needed) so a suspend is checkpointed before power-down
+  and a resume re-queries idle state right away rather than waiting for
+  the next tick.
+- **Hydration and eye-rest freeze/resume on any ACTIVE ↔ non-ACTIVE
+  presence transition**, mirroring what `start_idea_walk()` already did
+  explicitly — except deliberately skipped during an actual idea walk
+  (which owns that freeze/thaw itself) and eye-rest is skipped unless the
+  session is actually `FOCUSING` (a deliberately `PAUSED` session must
+  never be silently un-paused by a presence blip).
+- **Away-from-computer break credit** (`Technical.md` §14): a presence
+  return-to-ACTIVE that clears `BreakEngine.qualifies_as_break()`'s
+  180-second floor is recorded as a `BreakSession(kind=AWAY,
+  completion_source=IDLE_DETECTED)` — never "walk completed", just what
+  was actually observed.
+- **Capability detection degrades, never crashes**
+  (`PlatformCapabilities`, Implementation Standards.md §14): any adapter
+  that fails to construct, or a provider that starts raising at runtime,
+  is dropped/disabled and logged rather than propagated — the focus timer
+  keeps working with automatic-away detection simply turned off.
+- **Launch-at-login is now real.** `WindowsAutostartService` adds/removes
+  a per-user `Run` registry value (no admin rights, no service) and
+  `bootstrap.py` syncs it once at startup and again on every settings
+  change.
+
+**Deliberately not done in this phase:**
+
+- **macOS/Linux adapters** — `activity/base.py`'s protocols are already
+  platform-agnostic; only `platform/windows.py` exists so far (Phase 7).
+- **Fullscreen/presentation detection and native actionable
+  notifications** — both explicitly `Technical.md` §45's "later" list.
+- **No automated verification of `platform/windows.py` itself.** It
+  imports `winreg`/`ctypes.windll`, which only exist on real Windows, so
+  it cannot be imported or exercised in this Linux sandbox at all (unlike
+  Phase 4's Qt-only code, which at least byte-compiles and can be
+  reasoned about structurally). Verify it manually on the user's machine.
+
+Everything else — `platform/` beyond `windows.py`/`factory.py` — still
+exists only as an empty package with a docstring.
 
 ## Planned phases
 
@@ -282,10 +349,10 @@ desktop shell):
    QML views, tray integration, `NotificationService`, quiet mode, view
    models wired to the Phase 2 engines, the database opened and the
    session snapshot checkpointed at real startup; see above).
-5. **First platform integration (Windows)** — idle detection
+5. **First platform integration (Windows)** — done (idle detection
    (`GetLastInputInfo`), lock/unlock (`WTSRegisterSessionNotification`),
-   sleep/wake (`WM_POWERBROADCAST`), all behind the `activity`/`platform`
-   interfaces.
+   sleep/wake (`WM_POWERBROADCAST`), autostart, all behind the
+   `activity`/`platform` interfaces; see above).
 6. **Packaging** — `pyside6-deploy` / Nuitka standalone build, measured
    against the resource-efficiency targets in the technical spec.
 7. **Other operating systems** — macOS/Linux adapters behind the same
