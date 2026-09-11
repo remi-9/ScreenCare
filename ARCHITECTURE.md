@@ -102,9 +102,62 @@ Two design points worth calling out:
   `WM_POWERBROADCAST` on Windows); Phase 2 only guarantees the engine reacts
   correctly once something does call it.
 
-Everything else — `activity/`, `notifications/`, `persistence/`,
-`platform/`, `analytics/`, `ui/viewmodels/` — still exists only as an empty
-package with a docstring noting which phase implements it.
+### Phase 3 — persistence
+
+```text
+src/screencare/persistence/
+├── database.py          Database — sqlite3 connection, pragmas (WAL etc.), DatabaseError
+├── migrations.py         schema_migrations table + versioned migration functions
+├── repositories.py        FocusSessionRepository, BreakSessionRepository, HydrationEventRepository
+├── session_recovery.py    SessionSnapshot(Repository), reconcile_startup_snapshot()
+├── settings.py            AppSettings + SettingsBackend (InMemory / QSettings)
+└── paths.py               default_database_path() (QStandardPaths)
+```
+
+Almost all of this is plain Python tested against a real (temporary) or
+in-memory `sqlite3` connection — 33 new tests, no PySide6 required. Only
+`paths.py` and `settings.QSettingsBackend` touch Qt (`QStandardPaths` /
+`QSettings`), gated the same `pytest.importorskip("PySide6")` way as the
+Phase 1 QML test; their tests build an isolated, temp-file-backed
+`QSettings` rather than the app-wide one, so running the suite never
+touches the developer's real, persistent ScreenCare settings.
+
+Design points:
+
+- **No ORM, explicit SQL, short transactions.** Each repository method is
+  one `with connection:` block. Migrations are plain functions recorded
+  in `schema_migrations`, run once, and are meant to be *added to*, never
+  edited — `symptom_checkins` (Concept.md's optional check-in feature)
+  is deliberately not created yet, since the spec says to keep it
+  optional/disabled until the feature itself is built.
+- **One exception type for a broken database.** `Database.open()` wraps
+  both filesystem and sqlite3 errors as `DatabaseError`, so a caller (the
+  app, eventually) can show a recoverable error instead of crash-looping
+  (`Implementation Standards.md` §41).
+- **Crash recovery is reconciliation from timestamps, not a guess.**
+  `session_recovery.py` stores a single-row "what was in progress"
+  snapshot and a pure `reconcile_startup_snapshot()` decides, from the
+  gap since the last checkpoint: nothing to do, offer to resume (≤ ~2
+  min), or close as interrupted — it never reports a session as
+  *completed* just because time passed (`Technical.md` §23). This is
+  about surviving a crash/restart specifically; the live in-process
+  sleep/idle handling for a session that's still running is
+  `FocusEngine.on_presence_changed()` (Phase 2).
+- **Settings are validated in Python, not trusted from QML.**
+  `AppSettings` clamps every duration to the bounds in
+  `Implementation Standards.md` §30 and falls back to a safe default for
+  a missing, wrong-typed, or corrupted stored value — tested entirely
+  through `InMemorySettingsBackend`, with `QSettingsBackend` as a thin,
+  separately-tested adapter.
+- **Not yet wired up:** nothing calls `SessionSnapshotRepository.save()`
+  from a running session, and nothing resolves `default_database_path()`
+  into an actual `Database.open()` at startup. Both need Phase 4's real
+  app/event loop to have a sensible "when" — Phase 3 only had to prove
+  the storage and reconciliation logic are correct in isolation.
+
+Everything else — `activity/`, `notifications/`, `platform/`,
+`analytics/`, `ui/viewmodels/` — still exists only as an empty package
+with a docstring noting which phase implements it.
 
 ## Planned phases
 
@@ -117,11 +170,13 @@ desktop shell):
 2. **Pure core domain** — done (`Clock`/`FakeClock`, the central scheduler,
    `FocusEngine`, `BreakEngine`, `HydrationEngine`, `EyeRestEngine`,
    `WellnessCoordinator`; see above).
-3. **Persistence** — `QSettings`, SQLite (WAL mode) + migrations,
-   repositories, crash-recovery snapshot/reconciliation.
+3. **Persistence** — done (`QSettings`, SQLite (WAL mode) + migrations,
+   repositories, crash-recovery snapshot/reconciliation; see above).
 4. **Desktop UI** — real dashboard/focus/break/settings QML views, tray
    integration, `NotificationService`, view models wired to the Phase 2
-   engines.
+   engines, and the wiring this phase deferred: opening the real database
+   at startup, checkpointing the session snapshot, resolving the real
+   settings backend.
 5. **First platform integration (Windows)** — idle detection
    (`GetLastInputInfo`), lock/unlock (`WTSRegisterSessionNotification`),
    sleep/wake (`WM_POWERBROADCAST`), all behind the `activity`/`platform`

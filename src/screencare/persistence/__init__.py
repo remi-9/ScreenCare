@@ -1,4 +1,7 @@
-"""QSettings preferences, SQLite history, migrations, and repositories.
+"""Local storage: SQLite history + migrations, the crash-recovery session
+snapshot, and validated ``QSettings``-backed preferences.
 
-Not yet implemented. Planned for Phase 3 — Persistence.
+Everything except ``paths.py`` (needs ``QStandardPaths``) and the
+``QSettingsBackend`` class in ``settings.py`` (needs ``QSettings``) is
+plain Python, tested against a real or in-memory SQLite connection.
 """
