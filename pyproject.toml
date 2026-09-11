@@ -1,0 +1,38 @@
+[project]
+name = "screencare"
+version = "0.1.0"
+description = "ScreenCare — Adaptive Focus & Wellness Companion (local-first desktop app)"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "PySide6==6.11.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-qt>=4.4",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+screencare = "screencare.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

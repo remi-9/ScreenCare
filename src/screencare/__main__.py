@@ -1,0 +1,10 @@
+"""Enables ``python -m screencare``."""
+
+from __future__ import annotations
+
+import sys
+
+from screencare.main import main
+
+if __name__ == "__main__":
+    sys.exit(main())

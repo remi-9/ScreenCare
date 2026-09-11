@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+
+# Testing / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Application data — must never be committed
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.log
+
+# Nuitka / pyside6-deploy build output
+*.build/
+*.dist/
+*.onefile-build/
+build/
+dist/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
