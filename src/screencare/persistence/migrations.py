@@ -80,10 +80,29 @@ def _migration_001_initial(conn: sqlite3.Connection) -> None:
     )
 
 
+def _migration_002_idea_walk_notes(conn: sqlite3.Connection) -> None:
+    """``ScreenCare — Concept.md``, "Idea Walk": a small text box to capture
+    a thought on return, stored locally. Its own table (rather than folding
+    into ``focus_sessions``) since a note isn't tied to any one focus
+    session and note capture can be disabled independently of everything
+    else (``Technical.md`` section 15)."""
+    conn.execute(
+        """
+        CREATE TABLE idea_walk_notes (
+            id TEXT PRIMARY KEY,
+            occurred_at_utc TEXT NOT NULL,
+            note TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX idx_idea_walk_notes_time ON idea_walk_notes(occurred_at_utc)")
+
+
 # (version, description, migration). Append-only: never edit or remove a
 # past entry, only add new ones — ScreenCare — Technical.md section 39.
 MIGRATIONS: tuple[tuple[int, str, Migration], ...] = (
     (1, "initial schema", _migration_001_initial),
+    (2, "idea walk notes", _migration_002_idea_walk_notes),
 )
 
 

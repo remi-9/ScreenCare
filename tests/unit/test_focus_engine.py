@@ -24,6 +24,15 @@ def _make() -> tuple[FakeClock, Scheduler, FocusEngine]:
 def test_starts_in_stopped_state() -> None:
     _, _, engine = _make()
     assert engine.state is FocusState.STOPPED
+    assert engine.plan is None
+    assert engine.started_at_utc is None
+
+
+def test_plan_and_started_at_are_exposed_once_a_session_starts() -> None:
+    clock, _, engine = _make()
+    engine.start(PLAN)
+    assert engine.plan == PLAN
+    assert engine.started_at_utc == clock.utc_now()
 
 
 def test_full_happy_path_classic_session() -> None:

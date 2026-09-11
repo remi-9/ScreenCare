@@ -62,9 +62,14 @@ class HydrationEngine:
         self._budget.freeze()
 
     def resume(self) -> None:
-        """Resume a frozen countdown from wherever it was left."""
+        """Resume a frozen countdown from wherever it was left. If hydration
+        was already due (and not yet re-armed by :meth:`log_drink` or
+        :meth:`start`) rather than actually frozen mid-countdown,
+        ``remaining_seconds`` is ``0`` — fall back to a full interval rather
+        than re-arming for zero seconds, which would just fire again
+        immediately (mirrors :meth:`~screencare.engines.eye_rest_engine.EyeRestEngine.resume`)."""
         if not self._budget.armed:
-            self._budget.arm(self._budget.remaining_seconds)
+            self._budget.arm(self._budget.remaining_seconds or self.settings.interval_seconds)
 
     def log_drink(self, *, source: str = "manual") -> HydrationEvent:
         """Record a hydration action and reset the interval."""

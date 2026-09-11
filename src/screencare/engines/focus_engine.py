@@ -98,6 +98,23 @@ class FocusEngine:
     def extensions_used(self) -> int:
         return self._extensions_used
 
+    @property
+    def max_extensions(self) -> int:
+        return self._max_extensions
+
+    @property
+    def plan(self) -> FocusPlan | None:
+        """The plan the current (or most recently active) session was
+        started with, or ``None`` before any session has started. Read-only
+        — exists so a caller (Phase 4's crash-recovery checkpointing) can
+        snapshot enough to reconstruct the session without reaching into
+        engine internals."""
+        return self._plan
+
+    @property
+    def started_at_utc(self) -> datetime | None:
+        return self._started_at_utc
+
     # -- lifecycle --------------------------------------------------------
 
     def start(self, plan: FocusPlan) -> None:

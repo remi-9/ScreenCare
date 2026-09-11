@@ -19,18 +19,21 @@ def test_apply_pending_creates_the_expected_tables() -> None:
         "break_sessions",
         "hydration_events",
         "active_session_snapshot",
+        "idea_walk_notes",
     } <= tables
 
 
-def test_apply_pending_records_the_applied_version() -> None:
+def test_apply_pending_records_the_applied_versions() -> None:
     conn = sqlite3.connect(":memory:")
     clock = FakeClock()
     newly_applied = apply_pending(conn, clock)
-    assert newly_applied == [1]
+    assert newly_applied == [1, 2]
 
-    row = conn.execute("SELECT version, applied_at_utc FROM schema_migrations").fetchone()
-    assert row[0] == 1
-    assert row[1] == clock.utc_now().isoformat()
+    rows = conn.execute(
+        "SELECT version, applied_at_utc FROM schema_migrations ORDER BY version"
+    ).fetchall()
+    assert [row[0] for row in rows] == [1, 2]
+    assert rows[0][1] == clock.utc_now().isoformat()
 
 
 def test_apply_pending_is_idempotent() -> None:

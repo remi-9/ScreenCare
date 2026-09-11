@@ -1,5 +1,7 @@
-"""Dashboard statistics queries over the local SQLite history.
+"""Dashboard statistics over the local SQLite history.
 
-Not yet implemented. Planned for Phase 3/4, once persistence exists to
-query against.
+``summary.py`` is pure aggregation (no SQLite, no Qt) over rows the caller
+already fetched with a repository's ``list_since`` — see
+``ScreenCare — Technical.md`` section 42 on running dashboard queries only
+when something actually warrants recomputing them, never on a timer.
 """

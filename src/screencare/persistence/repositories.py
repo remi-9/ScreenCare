@@ -61,6 +61,17 @@ class FocusSessionRepository:
         ).fetchall()
         return [_row_to_focus_summary(row) for row in rows]
 
+    def list_since(self, since_utc: datetime, limit: int = 500) -> list[FocusSessionSummary]:
+        """Sessions started at or after ``since_utc`` — what the dashboard
+        (``ScreenCare — Technical.md`` section 42) aggregates over, run only
+        when the dashboard opens or a session completes, never on a timer."""
+        rows = self._connection.execute(
+            "SELECT * FROM focus_sessions WHERE started_at_utc >= ? "
+            "ORDER BY started_at_utc DESC LIMIT ?",
+            (since_utc.isoformat(), limit),
+        ).fetchall()
+        return [_row_to_focus_summary(row) for row in rows]
+
 
 def _row_to_focus_summary(row: sqlite3.Row) -> FocusSessionSummary:
     return FocusSessionSummary(
@@ -112,6 +123,14 @@ class BreakSessionRepository:
         ).fetchall()
         return [_row_to_break_session(row) for row in rows]
 
+    def list_since(self, since_utc: datetime, limit: int = 500) -> list[BreakSession]:
+        rows = self._connection.execute(
+            "SELECT * FROM break_sessions WHERE started_at_utc >= ? "
+            "ORDER BY started_at_utc DESC LIMIT ?",
+            (since_utc.isoformat(), limit),
+        ).fetchall()
+        return [_row_to_break_session(row) for row in rows]
+
 
 def _row_to_break_session(row: sqlite3.Row) -> BreakSession:
     return BreakSession(
@@ -144,11 +163,48 @@ class HydrationEventRepository:
             "SELECT * FROM hydration_events ORDER BY occurred_at_utc DESC LIMIT ?",
             (limit,),
         ).fetchall()
-        return [
-            HydrationEvent(
-                occurred_at_utc=datetime.fromisoformat(row["occurred_at_utc"]),
-                action=row["action"],
-                source=row["source"],
+        return [_row_to_hydration_event(row) for row in rows]
+
+    def list_since(self, since_utc: datetime, limit: int = 500) -> list[HydrationEvent]:
+        rows = self._connection.execute(
+            "SELECT * FROM hydration_events WHERE occurred_at_utc >= ? "
+            "ORDER BY occurred_at_utc DESC LIMIT ?",
+            (since_utc.isoformat(), limit),
+        ).fetchall()
+        return [_row_to_hydration_event(row) for row in rows]
+
+
+def _row_to_hydration_event(row: sqlite3.Row) -> HydrationEvent:
+    return HydrationEvent(
+        occurred_at_utc=datetime.fromisoformat(row["occurred_at_utc"]),
+        action=row["action"],
+        source=row["source"],
+    )
+
+
+class IdeaWalkNoteRepository:
+    """Local-only capture of the optional "anything come to mind?" note
+    (``ScreenCare — Concept.md``, "Idea Walk"). Never logged — see
+    ``ScreenCare — Implementation Standards.md`` section 29 on not logging
+    private user-entered content."""
+
+    def __init__(self, connection: sqlite3.Connection, clock: Clock) -> None:
+        self._connection = connection
+        self._clock = clock
+
+    def insert(self, note: str) -> str:
+        row_id = str(uuid.uuid4())
+        with self._connection:
+            self._connection.execute(
+                "INSERT INTO idea_walk_notes (id, occurred_at_utc, note) VALUES (?, ?, ?)",
+                (row_id, self._clock.utc_now().isoformat(), note),
             )
-            for row in rows
-        ]
+        return row_id
+
+    def list_recent(self, limit: int = 20) -> list[tuple[datetime, str]]:
+        rows = self._connection.execute(
+            "SELECT occurred_at_utc, note FROM idea_walk_notes "
+            "ORDER BY occurred_at_utc DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [(datetime.fromisoformat(row["occurred_at_utc"]), row["note"]) for row in rows]

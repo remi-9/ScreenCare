@@ -155,9 +155,115 @@ Design points:
   app/event loop to have a sensible "when" — Phase 3 only had to prove
   the storage and reconciliation logic are correct in isolation.
 
-Everything else — `activity/`, `notifications/`, `platform/`,
-`analytics/`, `ui/viewmodels/` — still exists only as an empty package
-with a docstring noting which phase implements it.
+### Phase 4 — desktop UI
+
+```text
+src/screencare/
+├── app/
+│   ├── session.py         AppSession — the Qt-free application layer (see below)
+│   └── bootstrap.py       QApplication + AppSession + view models + QML, wired together
+├── notifications/
+│   ├── base.py            Notification, NotificationService protocol, InMemoryNotificationService
+│   └── tray_service.py     TrayNotificationService (QSystemTrayIcon adapter)
+├── analytics/
+│   └── summary.py          dashboard_summary() — pure aggregation over history rows
+├── ui/
+│   ├── viewmodels/
+│   │   ├── focus_view_model.py       FocusViewModel
+│   │   ├── break_view_model.py       BreakViewModel
+│   │   ├── settings_view_model.py    SettingsViewModel
+│   │   └── dashboard_view_model.py   DashboardViewModel
+│   └── qml/
+│       ├── Main.qml            real window shell: tab bar + break overlay
+│       ├── FocusView.qml       timer, mode selection, idea walk
+│       ├── BreakView.qml       recovery break / ready screen
+│       ├── DashboardView.qml    today/week summary
+│       └── SettingsView.qml     bindings over SettingsViewModel
+└── persistence/
+    ├── repositories.py     + list_since() on every history repo; + IdeaWalkNoteRepository
+    ├── migrations.py        + migration 002 (idea_walk_notes table)
+    └── settings.py          + AppSettings.window_geometry
+```
+
+**`AppSession` (`app/session.py`) is the center of this phase and is
+deliberately Qt-free.** It wires the Phase 2 engines, `WellnessCoordinator`,
+the Phase 3 repositories, and a `NotificationService` together into the
+actual focus-session lifecycle (`start_focus`/`pause`/`resume`/`extend`/
+`start_break`/`end_break`/`start_idea_walk`/`return_from_idea_walk`/`stop`,
+plus `log_drink`, `dismiss_reminder`, `enter_quiet_mode`), and is driven by
+an injected `Clock` exactly like the engines beneath it. That's what let
+Phase 4's hardest logic — notification merging, crash-recovery
+checkpointing, quiet mode — be fully covered by `tests/unit/test_app_session.py`
+using a `FakeClock` and a real (in-memory) SQLite database, with no PySide6
+installed. Only the thin Qt layer on top (`FocusViewModel`, `BreakViewModel`,
+`bootstrap.py`) needs a human or a PySide6-equipped CI run to confirm.
+
+Design points:
+
+- **Checkpointing lives in `AppSession`, not the engines.** It saves a
+  `SessionSnapshot` immediately on every lifecycle transition and at most
+  once a minute otherwise (`Technical.md` §27: "Database session writes
+  <= 1/minute except transitions"), reading `FocusEngine.plan` /
+  `.started_at_utc` — two small new read-only properties added to
+  `FocusEngine` this phase specifically so `AppSession` never has to reach
+  into its private state.
+- **Notification merging is exactly the worked example in `Technical.md`
+  §7.** `WellnessCoordinator.decide_recovery`/`.should_fire_hydration_standalone`
+  already existed (Phase 2); `AppSession` is what actually calls them at the
+  right moments — when hydration comes due mid-session (merge into the
+  upcoming break if close enough, otherwise fire standalone) and when
+  recovery comes due (fold in a hydration reminder that fired shortly
+  before, and any still-pending in-session eye-rest prompt).
+- **Eye-rest notifications are always in-app only, never sent through
+  `NotificationService`** (`Implementation Standards.md` §22: "should not
+  aggressively interrupt"); hydration and recovery notifications go through
+  it, so a `TrayNotificationService`-less environment (no system tray) or
+  quiet mode can suppress them without touching internal state.
+- **Quiet mode suppresses delivery, not state.** `enter_quiet_mode()`
+  only gates the `NotificationService.send()` calls in `AppSession`; the
+  engines underneath keep running exactly as before, so nothing is lost,
+  and the recovery break screen still works normally regardless.
+- **`QApplication`, not a bare `QGuiApplication`.** `QSystemTrayIcon`/
+  `QMenu`/`QAction` are part of the widgets-based tray stack even though the
+  UI itself is Qt Quick/QML; `QApplication` is a `QGuiApplication` subclass
+  so `QQmlApplicationEngine` works identically under it.
+- **The tray icon is generated in code** (`bootstrap._build_tray_pixmap`),
+  not a shipped asset — one less file to keep in sync, and it's checked
+  against `QSystemTrayIcon.isSystemTrayAvailable()` first, falling back to
+  normal window behavior (`app.setQuitOnLastWindowClosed(True)`) if no tray
+  exists, per `Technical.md` §41.
+- **The UI tick is throttled when the window is hidden** (1 s while
+  visible, 5 s while hidden — `Technical.md` §25/§27) by watching the root
+  window's `visibleChanged` signal from Python; `AppSession.tick()` itself
+  doesn't care how often it's called; `Scheduler`'s wall-clock correctness
+  means a slower tick never causes a missed or late deadline, only a
+  slightly less frequent check for one that's already due.
+- **`DashboardViewModel` reads the repositories directly**, not through
+  `AppSession` — the dashboard is a read-only report over history, not a
+  control surface for the live session, and it only queries on open or by
+  explicit refresh (`Technical.md` §42), never on the per-second UI timer.
+- **A tiny new migration (002)** adds `idea_walk_notes` — Concept.md's
+  "anything come to mind?" capture — kept in its own table since a note
+  isn't tied to any one focus session.
+
+**Deliberately not done in this phase:**
+
+- **Launch-at-login is a stored preference only.** `SettingsViewModel.launchAtLogin`
+  round-trips through `AppSettings`, but nothing registers or removes an
+  actual OS autostart entry yet — that's a Windows platform adapter, Phase 5.
+- **The break countdown shown in `BreakView.qml` is not currently
+  enforced or persisted second-by-second** the way the focus countdown is;
+  `BreakEngine` still just records start/end timestamps. Concept.md only
+  ever describes the break duration as a suggestion, not something the
+  engine must enforce, so this wasn't extended this phase.
+- **No native Windows toast, no presence-aware notification suppression.**
+  `TrayNotificationService` is exactly the `QSystemTrayIcon.showMessage`
+  MVP path `Technical.md` §16 specifies; richer platform notifications and
+  automatic LOCKED/SLEEPING/IDLE-based suppression are explicitly Phase 5+
+  (`Technical.md` §45's "later" list).
+
+Everything else — `activity/`, `platform/` — still exists only as an empty
+package with a docstring noting which phase implements it.
 
 ## Planned phases
 
@@ -172,11 +278,10 @@ desktop shell):
    `WellnessCoordinator`; see above).
 3. **Persistence** — done (`QSettings`, SQLite (WAL mode) + migrations,
    repositories, crash-recovery snapshot/reconciliation; see above).
-4. **Desktop UI** — real dashboard/focus/break/settings QML views, tray
-   integration, `NotificationService`, view models wired to the Phase 2
-   engines, and the wiring this phase deferred: opening the real database
-   at startup, checkpointing the session snapshot, resolving the real
-   settings backend.
+4. **Desktop UI** — done (`AppSession`, real dashboard/focus/break/settings
+   QML views, tray integration, `NotificationService`, quiet mode, view
+   models wired to the Phase 2 engines, the database opened and the
+   session snapshot checkpointed at real startup; see above).
 5. **First platform integration (Windows)** — idle detection
    (`GetLastInputInfo`), lock/unlock (`WTSRegisterSessionNotification`),
    sleep/wake (`WM_POWERBROADCAST`), all behind the `activity`/`platform`
@@ -198,17 +303,19 @@ layer.
 
 ## Threading and scheduling
 
-The scheduler/engine layer (Phase 2, above) implements the deadline
-mechanics; what's not yet implemented is wiring `Scheduler.tick()` to an
-actual Qt event loop. Per the technical spec, that will be one central
-scheduler ticked from the Qt main thread — no per-feature `QTimer`s — with
-coarse tick intervals when the app is backgrounded (Phase 4). Worker
-threads (`QThreadPool`/`QThread`) are reserved for genuinely blocking work
-(large exports/analytics, Phase 3+), each with its own SQLite connection.
+`Scheduler.tick()` is now driven by one `QTimer` on the Qt main thread
+(`app/bootstrap.py`) — no per-feature `QTimer`s — at 1 s while the window is
+visible and 5 s while hidden in the tray (`Technical.md` §25/§27). Worker
+threads (`QThreadPool`/`QThread`) remain reserved for genuinely blocking
+work (large exports/analytics) and aren't needed yet — Phase 4's dashboard
+queries are cheap enough to run on the main thread, each with its own
+SQLite connection via the repositories.
 
-## Notifications (not yet implemented)
+## Notifications
 
 Notifications are an output channel, never a source of truth: the engines
-and coordinator decide state and persist it; `NotificationService` merely
-attempts to display it, and the app must remain correct even if the OS
-suppresses the notification.
+and `AppSession` decide state and persist it first; `NotificationService`
+(`notifications/base.py`'s protocol, `notifications/tray_service.py`'s
+`QSystemTrayIcon` adapter) merely attempts to display it afterward, and the
+app remains correct even if the OS suppresses the notification, no tray
+exists at all, or the user has turned on quiet mode.

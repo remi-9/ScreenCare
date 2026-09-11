@@ -88,3 +88,22 @@ def test_an_unknown_stored_theme_falls_back_to_system() -> None:
     backend.set_value("app/theme", "psychedelic")
     settings = AppSettings(backend)
     assert settings.theme == "system"
+
+
+def test_window_geometry_defaults_to_none(settings: AppSettings) -> None:
+    assert settings.window_geometry is None
+
+
+def test_window_geometry_round_trips(settings: AppSettings) -> None:
+    settings.window_geometry = (100, 50, 480, 640)
+    assert settings.window_geometry == (100, 50, 480, 640)
+
+
+def test_a_corrupted_window_geometry_falls_back_to_none() -> None:
+    backend = InMemorySettingsBackend()
+    backend.set_value("app/window_geometry", "not,valid,geometry")
+    settings = AppSettings(backend)
+    assert settings.window_geometry is None
+
+    backend.set_value("app/window_geometry", "0,0,-5,600")
+    assert AppSettings(backend).window_geometry is None

@@ -1,41 +1,71 @@
 import QtQuick
 import QtQuick.Window
+import QtQuick.Controls
+import QtQuick.Layouts
 
-// Phase 1 placeholder window. Presentation only — no business logic
-// belongs in QML (ScreenCare — Technical.md, section 24). This will be
-// replaced by the real focus timer / dashboard views in later phases.
+// The real desktop shell (Phase 4). Presentation only, per
+// ScreenCare — Technical.md section 24: every value shown here is read
+// from a view model (focusViewModel / breakViewModel / settingsViewModel /
+// dashboardViewModel), and every action calls straight back into one.
 Window {
     id: root
 
-    width: 420
-    height: 280
-    minimumWidth: 360
-    minimumHeight: 240
+    width: 460
+    height: 640
+    minimumWidth: 380
+    minimumHeight: 520
     visible: true
     title: qsTr("ScreenCare")
     color: "#101418"
 
-    Column {
-        anchors.centerIn: parent
-        spacing: 12
-        width: 320
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: qsTr("ScreenCare")
-            font.pixelSize: 28
-            font.weight: Font.Medium
-            color: "#F2F5F7"
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: parent.width
-            text: qsTr("Focus and wellness companion — coming together, one milestone at a time.")
-            font.pixelSize: 14
-            color: "#9AA5AD"
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
+    // Technical.md section 18/28: closing the main window should hide it
+    // and keep ScreenCare running in the tray, not quit -- but only when a
+    // tray actually exists to fall back to (trayAvailable is a context
+    // property set once at startup by app/bootstrap.py).
+    onClosing: (close) => {
+        if (trayAvailable) {
+            close.accepted = false
+            root.hide()
         }
     }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        TabBar {
+            id: tabBar
+            Layout.fillWidth: true
+
+            TabButton { text: qsTr("Focus") }
+            TabButton { text: qsTr("Dashboard") }
+            TabButton { text: qsTr("Settings") }
+        }
+
+        StackLayout {
+            id: stack
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: tabBar.currentIndex
+            // "Dashboard queries should run ... when the dashboard opens" --
+            // Technical.md section 42 -- never on a timer.
+            onCurrentIndexChanged: if (currentIndex === 1) dashboardViewModel.refresh()
+
+            FocusView { }
+            DashboardView { }
+            SettingsView { }
+        }
+    }
+
+    // The recovery-break / "ready" overlay takes over the whole window,
+    // matching Concept.md's full-context break screen. An idea walk stays
+    // inline inside FocusView instead -- it's a short pause within the
+    // session, not a separate interruption.
+    BreakView {
+        anchors.fill: parent
+        visible: breakViewModel.isRecoveryDue || breakViewModel.isBreaking || breakViewModel.isReady
+        z: 10
+    }
+
+    Component.onCompleted: dashboardViewModel.refresh()
 }

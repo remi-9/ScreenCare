@@ -71,6 +71,24 @@ def test_freeze_and_resume_pause_the_countdown() -> None:
     assert engine.is_due
 
 
+def test_resume_after_already_due_does_not_immediately_refire() -> None:
+    """``resume()`` called when hydration is already due (not merely frozen
+    mid-countdown) must fall back to a full interval instead of re-arming
+    for zero seconds -- otherwise it would fire again on the very next
+    tick."""
+    clock = FakeClock()
+    scheduler = Scheduler(clock)
+    engine = HydrationEngine(clock, scheduler, settings=HydrationSettings(interval_seconds=60 * 60))
+    engine.start()
+    clock.advance(hours=1)
+    scheduler.tick()
+    assert engine.is_due
+
+    engine.resume()  # e.g. thawed after an idea walk without a log_drink() in between
+    scheduler.tick()
+    assert engine.seconds_until_due == pytest.approx(60 * 60)
+
+
 def test_settings_reject_invalid_values() -> None:
     with pytest.raises(ValueError):
         HydrationSettings(interval_seconds=0)

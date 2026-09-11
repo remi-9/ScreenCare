@@ -203,6 +203,34 @@ class AppSettings:
             raise ValueError(f"theme must be one of {_VALID_THEMES}, got {theme!r}")
         self._backend.set_value("app/theme", theme)
 
+    # -- window geometry (Technical.md §19; deferred from Phase 3 until
+    # Phase 4 had a real window whose position/size means anything) --------
+
+    @property
+    def window_geometry(self) -> tuple[int, int, int, int] | None:
+        """``(x, y, width, height)``, or ``None`` if nothing was ever saved
+        (or the stored value is corrupt) so the caller can fall back to a
+        sensible default size and let the OS place the window."""
+        raw = self._backend.value("app/window_geometry", None)
+        if not isinstance(raw, str):
+            return None
+        parts = raw.split(",")
+        if len(parts) != 4:
+            return None
+        try:
+            x, y, width, height = (int(part) for part in parts)
+        except ValueError:
+            return None
+        if width <= 0 or height <= 0:
+            return None
+        return (x, y, width, height)
+
+    @window_geometry.setter
+    def window_geometry(self, geometry: tuple[int, int, int, int]) -> None:
+        x, y, width, height = geometry
+        value = f"{int(x)},{int(y)},{int(width)},{int(height)}"
+        self._backend.set_value("app/window_geometry", value)
+
     def sync(self) -> None:
         self._backend.sync()
 

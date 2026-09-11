@@ -13,6 +13,7 @@ from screencare.persistence.repositories import (
     BreakSessionRepository,
     FocusSessionRepository,
     HydrationEventRepository,
+    IdeaWalkNoteRepository,
 )
 from screencare.scheduler.clock import FakeClock
 
@@ -118,3 +119,48 @@ def test_hydration_event_round_trips(db) -> None:
     repo.insert(event)
     (persisted,) = repo.list_recent()
     assert persisted == event
+
+
+def test_list_since_excludes_entries_before_the_cutoff(db, clock) -> None:
+    repo = FocusSessionRepository(db.connection, clock)
+    repo.insert(
+        FocusSessionSummary(
+            mode=FocusMode.CLASSIC,
+            task_label="too old",
+            started_at_utc=clock.utc_now(),
+            ended_at_utc=clock.utc_now(),
+            planned_seconds=1500,
+            active_seconds=1500,
+            extension_seconds=0,
+            outcome=FocusOutcome.COMPLETED,
+        )
+    )
+
+    clock.advance(minutes=10)
+    cutoff = clock.utc_now()
+    clock.advance(minutes=5)
+
+    repo.insert(
+        FocusSessionSummary(
+            mode=FocusMode.CLASSIC,
+            task_label="recent enough",
+            started_at_utc=clock.utc_now(),
+            ended_at_utc=clock.utc_now(),
+            planned_seconds=1500,
+            active_seconds=1500,
+            extension_seconds=0,
+            outcome=FocusOutcome.COMPLETED,
+        )
+    )
+
+    (only,) = repo.list_since(cutoff)
+    assert only.task_label == "recent enough"
+
+
+def test_idea_walk_note_round_trips(db, clock) -> None:
+    repo = IdeaWalkNoteRepository(db.connection, clock)
+    repo.insert("maybe split the module in two")
+    (persisted,) = repo.list_recent()
+    occurred_at, note = persisted
+    assert note == "maybe split the module in two"
+    assert occurred_at == clock.utc_now()
