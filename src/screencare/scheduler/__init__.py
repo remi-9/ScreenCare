@@ -1,8 +1,7 @@
-"""The central deadline-based scheduler, and the Clock / FakeClock
-abstractions used throughout the app and its tests.
+"""Clock/FakeClock, the central deadline scheduler, and the shared
+DeadlineBudget helper engines use to survive sleep/idle correctly.
 
-Not yet implemented. Planned for Phase 2 — Pure core domain. This is the
-single scheduling mechanism the architecture requires, in place of many
-independent QTimers (``ScreenCare — Technical.md``, section 11;
-``ScreenCare — Implementation Standards.md``, section 8).
+The single scheduling mechanism the architecture requires, in place of many
+independent ``QTimer``s (``ScreenCare — Technical.md`` section 11;
+``ScreenCare — Implementation Standards.md`` section 8).
 """

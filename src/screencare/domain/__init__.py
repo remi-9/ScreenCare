@@ -1,6 +1,6 @@
-"""Domain models, enums, and events (focus sessions, breaks, hydration, ...).
+"""Domain models, enums, and errors: focus sessions, breaks, hydration
+events, and the vocabularies the engines share.
 
-Not yet implemented. Planned for Phase 2 — Pure core domain (see
-``ScreenCare — Implementation Standards.md``, section 49). This package must
-never import Qt or any platform-specific API.
+Pure data and pure functions only — this package must never import Qt or
+any platform-specific API.
 """

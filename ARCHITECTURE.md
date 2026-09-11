@@ -40,7 +40,9 @@ Two rules hold everywhere:
    directly; `screencare.activity` and `screencare.platform` are the only
    places allowed to do that.
 
-## What exists today (Phase 1 — repository foundation)
+## What exists today
+
+### Phase 1 — repository foundation
 
 ```text
 src/screencare/
@@ -58,12 +60,51 @@ startup. It has exactly one job: load the root QML and hand control to the
 Qt event loop, returning a non-zero exit code if the QML fails to load
 (so a CI/packaging smoke test can catch a broken UI without a display).
 
-Everything else — `domain/`, `engines/`, `scheduler/`, `activity/`,
-`notifications/`, `persistence/`, `platform/`, `analytics/`,
-`ui/viewmodels/` — exists only as an empty package with a docstring noting
-which phase implements it. That's intentional: the target layout from
-`ScreenCare — Technical.md` §5 is laid down up front so later phases have an
-obvious home, but no logic is invented ahead of the phase that needs it.
+### Phase 2 — pure core domain
+
+```text
+src/screencare/
+├── domain/
+│   ├── enums.py     FocusMode, FocusState, PresenceState, BreakKind, ...
+│   ├── errors.py     InvalidStateTransition
+│   └── models.py     FocusPlan/Durations, FocusSessionSummary, BreakSession, HydrationEvent
+├── scheduler/
+│   ├── clock.py             Clock protocol, SystemClock, FakeClock
+│   ├── scheduler.py          Scheduler — the one central deadline registry
+│   └── deadline_budget.py    DeadlineBudget — shared freeze/thaw-on-presence-change helper
+└── engines/
+    ├── adaptive_focus.py       AdaptiveFocusEngine (deterministic, rules-based)
+    ├── focus_engine.py         FocusEngine — the Technical.md §6 state machine
+    ├── break_engine.py         BreakEngine — away-time break qualification
+    ├── hydration_engine.py     HydrationEngine
+    ├── eye_rest_engine.py      EyeRestEngine
+    └── wellness_coordinator.py WellnessCoordinator — recovery/hydration merge decisions
+```
+
+No Qt, no OS APIs, no I/O — every one of these is driven entirely by an
+injected `Clock` and is covered by `tests/unit/` using `FakeClock`
+(70 tests, all deterministic — no test waits on a real timer).
+
+Two design points worth calling out:
+
+- **One shared scheduler, not five timers.** `FocusEngine`, `HydrationEngine`,
+  and `EyeRestEngine` each schedule their own named deadlines on the same
+  `Scheduler` instance via `DeadlineBudget`, rather than owning a timer each
+  (`Technical.md` §11, `Implementation Standards.md` §8). `DeadlineBudget`
+  is what lets all three implement "sleep/idle doesn't count against you"
+  exactly once instead of three times.
+- **Presence is a hook, not a sensor, in this phase.** `FocusEngine.on_presence_changed()`
+  exists and is fully tested (including the §47 acceptance scenario — start
+  a 25-minute session, sleep 30 minutes, wake up: the sleep isn't counted as
+  focus time and the session doesn't spuriously complete), but nothing calls
+  it yet with a real signal. That wiring is Phase 5's job
+  (`GetLastInputInfo`, `WTSRegisterSessionNotification`,
+  `WM_POWERBROADCAST` on Windows); Phase 2 only guarantees the engine reacts
+  correctly once something does call it.
+
+Everything else — `activity/`, `notifications/`, `persistence/`,
+`platform/`, `analytics/`, `ui/viewmodels/` — still exists only as an empty
+package with a docstring noting which phase implements it.
 
 ## Planned phases
 
@@ -73,10 +114,9 @@ desktop shell):
 
 1. **Repository foundation** — done (this document, `pyproject.toml`,
    lint/test setup, bootstrap + placeholder window).
-2. **Pure core domain** — `Clock`/`FakeClock`, the central scheduler,
+2. **Pure core domain** — done (`Clock`/`FakeClock`, the central scheduler,
    `FocusEngine`, `BreakEngine`, `HydrationEngine`, `EyeRestEngine`,
-   `WellnessCoordinator`. No Qt, no OS APIs — fully unit-testable with an
-   injectable clock.
+   `WellnessCoordinator`; see above).
 3. **Persistence** — `QSettings`, SQLite (WAL mode) + migrations,
    repositories, crash-recovery snapshot/reconciliation.
 4. **Desktop UI** — real dashboard/focus/break/settings QML views, tray
@@ -101,13 +141,15 @@ requires confirming the app boots and the test/lint setup works before any
 further code is added — a good gate to have before building the domain
 layer.
 
-## Threading and scheduling (not yet implemented)
+## Threading and scheduling
 
-Per the technical spec: one central scheduler on the Qt main thread, no
-per-feature `QTimer`s, deadlines computed from `time.monotonic_ns()` for
-runtime correctness and UTC timestamps for persisted history. Worker
+The scheduler/engine layer (Phase 2, above) implements the deadline
+mechanics; what's not yet implemented is wiring `Scheduler.tick()` to an
+actual Qt event loop. Per the technical spec, that will be one central
+scheduler ticked from the Qt main thread — no per-feature `QTimer`s — with
+coarse tick intervals when the app is backgrounded (Phase 4). Worker
 threads (`QThreadPool`/`QThread`) are reserved for genuinely blocking work
-(large exports/analytics), each with its own SQLite connection.
+(large exports/analytics, Phase 3+), each with its own SQLite connection.
 
 ## Notifications (not yet implemented)
 

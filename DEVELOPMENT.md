@@ -38,9 +38,21 @@ pytest
 - `tests/conftest.py` forces `QT_QPA_PLATFORM=offscreen` so UI tests never
   need a visible display or window focus to pass.
 
-As engine/scheduler code lands in Phase 2, tests must drive time via an
-injectable `FakeClock` rather than real `sleep()` calls — see
-`ScreenCare — Implementation Standards.md` §36.
+All engine/scheduler tests drive time via the injectable `FakeClock`
+(`screencare.scheduler.clock`) rather than real `sleep()` calls — see
+`ScreenCare — Implementation Standards.md` §36. The pattern:
+
+```python
+clock = FakeClock()
+scheduler = Scheduler(clock)
+engine = FocusEngine(clock, scheduler)
+engine.start(plan)
+clock.advance(minutes=25)   # instantaneous — no real waiting
+scheduler.tick()            # fires any deadlines that are now due
+```
+
+New time-dependent code should follow the same shape rather than adding a
+real timer or `time.sleep` anywhere in a test.
 
 ## Linting and formatting
 
