@@ -1,6 +1,6 @@
 # ScreenCare — Adaptive Focus & Wellness Companion
 
-ScreenCare is a privacy-first desktop application that combines focused-work techniques with evidence-informed computer wellness habits.
+ScreenCare is a privacy-first application that combines focused-work techniques with evidence-informed computer wellness habits.
 
 The application is intended for people who spend many hours programming, studying, designing, writing, gaming, or otherwise working at a computer and who may become so absorbed in their work that they forget to rest their eyes, move around, hydrate, or take meaningful breaks.
 

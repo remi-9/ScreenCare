@@ -61,7 +61,7 @@ unchanged in behavior:
 | Nuitka / `pyside6-deploy` / icon pipeline | `git push` → Vercel |
 | Phase-by-phase architecture log, spec section citations | Short [ARCHITECTURE.md](../ARCHITECTURE.md); plain comments only where the *why* isn't obvious |
 
-The old specs are kept read-only in [archive/](archive/) for reference.
+The old specs and code remain available at git tag `desktop-final`.
 They aren't required reading.
 
 ## Target shape

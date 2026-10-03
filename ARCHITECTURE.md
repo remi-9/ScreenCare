@@ -1,8 +1,7 @@
 # Architecture
 
-> The PySide6 desktop app this replaced is at git tag `desktop-final`. Its
-> architecture is archived in
-> [docs/archive/desktop-architecture.md](docs/archive/desktop-architecture.md).
+> The PySide6 desktop app this replaced, and its specs, are at git tag
+> `desktop-final` (`git checkout desktop-final`).
 
 ## The one idea
 

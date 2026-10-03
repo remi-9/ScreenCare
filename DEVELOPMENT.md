@@ -1,8 +1,5 @@
 # Development
 
-> The desktop-era instructions are archived in
-> [docs/archive/desktop-development.md](docs/archive/desktop-development.md).
-
 ## Setup
 
 Any Python 3.12 or newer.
