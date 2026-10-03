@@ -30,12 +30,11 @@ source .venv/bin/activate           # macOS / Linux
 pip install -e ".[dev]"
 
 # 5. Start the server
-uvicorn dev:app --reload
+uvicorn app:app --reload
 ```
 
 Open **http://127.0.0.1:8000** and start a focus block. `--reload` restarts
-the server when you edit Python files. (`dev.py` is the deployed app plus
-local serving of `public/`. On Vercel, the CDN serves `public/`.)
+the server when you edit Python files.
 
 > **Windows: "running scripts is disabled on this system"?** PowerShell's
 > default execution policy (*Restricted*) blocks every `.ps1` script,
@@ -49,7 +48,7 @@ local serving of `public/`. On Vercel, the CDN serves `public/`.)
 > `RemoteSigned` still requires downloaded scripts to be signed. If you'd
 > rather not change it, skip activation and call the venv directly:
 > `.venv\Scripts\python -m pip install -e ".[dev]"`, then
-> `.venv\Scripts\python -m uvicorn dev:app --reload`. Or use
+> `.venv\Scripts\python -m uvicorn app:app --reload`. Or use
 > `.venv\Scripts\activate.bat` from `cmd`.
 
 ### Optional
