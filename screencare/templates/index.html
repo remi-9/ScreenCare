@@ -49,9 +49,9 @@
     <nav aria-label="Primary" class="flex items-center gap-1">
       <div role="tablist" aria-label="View" class="mr-1 hidden rounded-full border border-stone-900/10 p-1 sm:flex dark:border-white/10">
         <button role="tab" :aria-selected="view === 'focus'" @click="view = 'focus'"
-                class="rounded-full px-4 py-1.5 text-sm transition" :class="view === 'focus' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-500'">Focus</button>
+                class="rounded-full px-4 py-1.5 text-sm transition" :class="view === 'focus' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'">Focus</button>
         <button role="tab" :aria-selected="view === 'dashboard'" @click="openDashboard()"
-                class="rounded-full px-4 py-1.5 text-sm transition" :class="view === 'dashboard' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-500'">Dashboard</button>
+                class="rounded-full px-4 py-1.5 text-sm transition" :class="view === 'dashboard' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'">Dashboard</button>
       </div>
       <button class="icon-btn sm:hidden" @click="view === 'focus' ? openDashboard() : view = 'focus'"
               :aria-label="view === 'focus' ? 'Open dashboard' : 'Back to focus'">
@@ -66,7 +66,7 @@
     </nav>
   </header>
 
-  <main id="main" class="mx-auto max-w-5xl px-4 pt-8 pb-16 sm:px-6 sm:pt-12">
+  <main id="main" class="mx-auto max-w-5xl px-4 pt-8 pb-32 sm:px-6 sm:pt-12">
 
     {# Status line: quiet mode / away #}
     <div class="mb-6 flex min-h-8 flex-wrap justify-center gap-2 text-sm" aria-live="polite">
@@ -83,7 +83,7 @@
 
       {# The ring #}
       <div class="relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center">
-        <div aria-hidden="true" class="absolute inset-6 rounded-full opacity-20 blur-2xl transition-colors duration-1000"
+        <div aria-hidden="true" class="absolute inset-10 rounded-full opacity-15 blur-3xl transition-colors duration-1000"
              :class="breathing && 'animate-breathe'" style="background: var(--accent)"></div>
         <svg viewBox="0 0 240 240" class="absolute inset-0 -rotate-90" role="progressbar"
              aria-label="Progress of the current phase" aria-valuemin="0" aria-valuemax="100"
@@ -93,10 +93,10 @@
                   stroke="var(--accent)" :stroke-dasharray="RING" :stroke-dashoffset="RING * (1 - progress)"
                   class="transition-[stroke-dashoffset,stroke] duration-1000 ease-linear"/>
         </svg>
-        <div class="relative text-center" :class="breathing && 'animate-breathe'">
+        <div class="relative text-center">
           <p class="eyebrow" x-text="phaseLabel"></p>
           <p class="mt-2 font-display text-6xl tabular-nums sm:text-7xl" x-text="clock" aria-hidden="true"></p>
-          <p class="mt-2 max-w-[14rem] truncate text-sm text-stone-500 dark:text-stone-400" x-text="session.task || subline"></p>
+          <p class="mt-2 max-w-[14rem] truncate text-sm text-stone-600 dark:text-stone-400" x-text="session.task || subline"></p>
         </div>
       </div>
 
@@ -106,7 +106,7 @@
         {# Idle: choose a mode #}
         <div x-show="session.phase === 'idle'" class="animate-rise">
           <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Ready for a focus block?</h1>
-          <p class="mt-2 text-stone-500 dark:text-stone-400">Focus deeply, then step away. Reminders are folded into your breaks.</p>
+          <p class="mt-2 text-stone-600 dark:text-stone-400">Focus deeply, then step away. Reminders are folded into your breaks.</p>
 
           <fieldset class="mt-6">
             <legend class="eyebrow mb-3">Mode</legend>
@@ -116,7 +116,7 @@
                 <input type="radio" name="mode" value="{{ value }}" x-model="mode" class="peer sr-only">
                 <span class="flex h-full flex-col rounded-2xl border border-stone-900/10 p-4 transition peer-checked:border-transparent peer-checked:ring-2 peer-checked:ring-(--accent) peer-focus-visible:outline-2 peer-focus-visible:outline-(--accent) hover:bg-stone-900/[0.03] dark:border-white/10 dark:hover:bg-white/[0.04]">
                   <span class="font-medium">{{ label }}</span>
-                  <span class="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                  <span class="mt-1 text-sm text-stone-600 dark:text-stone-400">
                     {% if value == "adaptive" %}<span x-text="Math.round(session.adaptive_focus_s / 60) + ' min · learns'"></span>{% else %}{{ hint }}{% endif %}
                   </span>
                 </span>
@@ -134,35 +134,35 @@
         {# Focusing / paused #}
         <div x-show="session.phase === 'focusing' || session.phase === 'paused'" x-cloak class="animate-rise">
           <h1 class="font-display text-3xl tracking-tight" x-text="session.phase === 'paused' ? 'Paused.' : (overtime ? 'A little extra time.' : 'In the zone.')"></h1>
-          <p class="mt-2 text-stone-500 dark:text-stone-400" x-text="session.phase === 'paused' ? 'Take your time. The clock is holding.' : 'Nothing to manage. ScreenCare will tell you when it\'s time to step away.'"></p>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="session.phase === 'paused' ? 'Take your time. The clock is holding.' : 'Nothing to manage. ScreenCare will tell you when it\'s time to step away.'"></p>
           <div class="mt-6 flex flex-wrap gap-2">
             <button x-show="session.phase === 'focusing'" class="btn-ghost" @click="act('pause')">{{ icon("pause", "size-4") }} Pause</button>
             <button x-show="session.phase === 'paused'" class="btn-primary" @click="act('resume')">{{ icon("play", "size-4") }} Resume</button>
             <button x-show="session.phase === 'focusing'" class="btn-ghost" @click="act('idea_walk')">{{ icon("bulb", "size-4") }} I'm stuck</button>
             <button class="btn-ghost" @click="stepAway()" x-show="!isAway">{{ icon("away", "size-4") }} Step away</button>
             <button class="btn-ghost" @click="act('back')" x-show="isAway">{{ icon("check", "size-4") }} I'm back</button>
-            <button class="btn-ghost text-stone-500" @click="act('stop')">{{ icon("stop", "size-4") }} End</button>
+            <button class="btn-ghost text-stone-600 dark:text-stone-400" @click="act('stop')">{{ icon("stop", "size-4") }} End</button>
           </div>
         </div>
 
         {# Recovery due: flow protection #}
         <div x-show="session.phase === 'recovery_due'" x-cloak class="animate-rise">
           <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="postponed ? 'Your break is waiting.' : 'Focus complete. Time for a reset.'"></h1>
-          <p class="mt-2 text-stone-500 dark:text-stone-400" x-text="recoveryCopy"></p>
-          <div class="mt-6 grid gap-2 sm:grid-cols-3">
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="recoveryCopy"></p>
+          <div class="mt-6 flex flex-wrap gap-2">
             <button class="btn-primary" @click="act('start_break')">{{ icon("walk", "size-4") }} Start break</button>
             <button class="btn-ghost" @click="act('finish_thought')" :disabled="session.finish_thought_used">Finish this thought</button>
             <button class="btn-ghost" @click="act('extend')" :disabled="extensionsLeft === 0">
-              {{ icon("plus", "size-4") }} 5 min <span class="text-stone-500" x-text="'(' + extensionsLeft + ' left)'"></span>
+              {{ icon("plus", "size-4") }} 5 more min <span class="text-stone-600 dark:text-stone-400" x-text="'· ' + extensionsLeft + ' left'"></span>
             </button>
           </div>
-          <button class="mt-4 text-sm text-stone-500 underline-offset-4 hover:underline" @click="askFeedback('skip_break')">Skip the break this time</button>
+          <button class="mt-4 text-sm text-stone-600 dark:text-stone-400 underline-offset-4 hover:underline" @click="askFeedback('skip_break')">Skip the break this time</button>
         </div>
 
         {# Break #}
         <div x-show="session.phase === 'breaking'" x-cloak class="animate-rise">
           <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Step away for a bit.</h1>
-          <p class="mt-2 text-stone-500 dark:text-stone-400">A few ideas, only if they feel good:</p>
+          <p class="mt-2 text-stone-600 dark:text-stone-400">A few ideas, only if they feel good:</p>
           <div class="mt-5 flex flex-wrap gap-2">
             <template x-for="c in suggestions" :key="c.id">
               <button class="chip" :aria-pressed="!!picked[c.id]" @click="picked[c.id] = !picked[c.id]">
@@ -176,7 +176,7 @@
         {# Idea walk #}
         <div x-show="session.phase === 'idea_walk'" x-cloak class="animate-rise">
           <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Take a 5-minute Idea Walk.</h1>
-          <p class="mt-2 text-stone-500 dark:text-stone-400">Step away from the screen and walk around. Don't force a solution. Give yourself space for possibilities.</p>
+          <p class="mt-2 text-stone-600 dark:text-stone-400">Step away from the screen and walk around. Don't force a solution. Give yourself space for possibilities.</p>
           <label for="note" class="eyebrow mt-6 mb-3 block">Anything come to mind?</label>
           <textarea id="note" x-model="note" rows="3" maxlength="2000" class="field resize-none" placeholder="Jot it down before it slips away…"></textarea>
           <div class="mt-4 flex flex-wrap gap-2">
@@ -194,7 +194,7 @@
           <p class="eyebrow">Your patterns</p>
           <h1 id="dash-title" class="mt-1 font-display text-4xl tracking-tight">How today felt</h1>
         </div>
-        <p class="max-w-sm text-sm text-stone-500 dark:text-stone-400">No streaks, no scores. Just enough to notice what rhythm works for you.</p>
+        <p class="max-w-sm text-sm text-stone-600 dark:text-stone-400">No streaks, no scores. Just enough to notice what rhythm works for you.</p>
       </div>
 
       <template x-if="summary">
@@ -202,9 +202,9 @@
           <dl class="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <template x-for="tile in tiles" :key="tile.label">
               <div class="card p-5">
-                <dt class="text-sm text-stone-500 dark:text-stone-400" x-text="tile.label"></dt>
+                <dt class="text-sm text-stone-600 dark:text-stone-400" x-text="tile.label"></dt>
                 <dd class="mt-2 font-display text-4xl tabular-nums" x-text="tile.value"></dd>
-                <dd class="mt-1 text-xs text-stone-500" x-text="tile.hint"></dd>
+                <dd class="mt-1 text-xs text-stone-600 dark:text-stone-400" x-text="tile.hint"></dd>
               </div>
             </template>
           </dl>
@@ -212,26 +212,56 @@
           <div class="card mt-3 p-6">
             <div class="flex items-center justify-between">
               <h2 class="font-medium">Focused minutes, last 7 days</h2>
-              <p class="text-sm text-stone-500" x-text="summary.week.focus_minutes + ' min · ' + summary.week.breaks_taken + ' breaks'"></p>
+              <p class="text-sm text-stone-600 dark:text-stone-400" x-text="summary.week.focus_minutes + ' min · ' + summary.week.breaks_taken + ' breaks'"></p>
             </div>
-            <svg class="mt-6 h-44 w-full" role="img" :aria-label="trendLabel" preserveAspectRatio="none" viewBox="0 0 700 176">
-              <template x-for="(d, i) in summary.trend" :key="d.date">
-                <g>
-                  <rect :x="i * 100 + 25" width="50" rx="10" fill="var(--color-focus)" class="opacity-80"
-                        :y="150 - barHeight(d.focus_minutes)" :height="Math.max(4, barHeight(d.focus_minutes))"></rect>
-                  <text :x="i * 100 + 50" y="172" text-anchor="middle" class="fill-stone-500 text-[13px]" x-text="d.label"></text>
-                </g>
+            <div class="mt-6 flex h-48 items-end gap-2 sm:gap-4" role="img" :aria-label="trendLabel">
+              <template x-for="d in summary.trend" :key="d.date">
+                <div class="flex h-full flex-1 flex-col items-center justify-end gap-2" aria-hidden="true">
+                  <span class="text-xs tabular-nums text-stone-600 dark:text-stone-400" x-text="d.focus_minutes || ''"></span>
+                  <div class="w-full max-w-12 rounded-xl bg-(--color-focus) transition-[height] duration-700"
+                       :class="d.focus_minutes ? 'opacity-90' : 'opacity-15'"
+                       :style="{ height: Math.max(6, barHeight(d.focus_minutes)) + 'px' }"></div>
+                  <span class="text-xs text-stone-600 dark:text-stone-400" :class="d.date === summary.trend.at(-1).date && 'font-semibold text-stone-800 dark:text-stone-200'" x-text="d.label"></span>
+                </div>
               </template>
-            </svg>
+            </div>
           </div>
         </div>
       </template>
-      <p x-show="!summary" class="mt-8 text-stone-500">Loading…</p>
+      <p x-show="!summary" class="mt-8 text-stone-600 dark:text-stone-400">Loading…</p>
     </section>
   </main>
 
+  {# ───────────────────────── Onboarding (first visit) ───────────────────────── #}
+  <div x-show="!prefs.onboarded" x-cloak data-onboarding class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-stone-950/50 p-4 backdrop-blur-md">
+    <div class="card my-auto w-full max-w-lg p-7 animate-rise sm:p-9" role="dialog" aria-modal="true" aria-labelledby="ob-title"
+         x-trap.inert.noscroll="!prefs.onboarded">
+      <p class="eyebrow">Welcome</p>
+      <h2 id="ob-title" class="mt-2 font-display text-3xl tracking-tight sm:text-4xl">Focus deeply. Then step away.</h2>
+      <ul class="mt-6 space-y-4 text-stone-600 dark:text-stone-300">
+        <li class="flex gap-3"><span class="mt-0.5 text-(--color-focus)">{{ icon("timer") }}</span>
+          <span><strong class="font-medium text-stone-900 dark:text-white">Pick a rhythm.</strong> Classic 25/5, Deep focus 50/8, or Adaptive, which learns from a quick "how was that?" after each block.</span></li>
+        <li class="flex gap-3"><span class="mt-0.5 text-(--color-recover)">{{ icon("walk") }}</span>
+          <span><strong class="font-medium text-stone-900 dark:text-white">One break, not five nags.</strong> Eye rest, water, and movement are folded into a single well-timed reset.</span></li>
+        <li class="flex gap-3"><span class="mt-0.5 text-(--color-hydrate)">{{ icon("check") }}</span>
+          <span><strong class="font-medium text-stone-900 dark:text-white">Private by design.</strong> No account. Your history stays in this browser.</span></li>
+      </ul>
+      <div class="mt-7 space-y-3 rounded-2xl bg-stone-900/[0.04] p-4 text-sm dark:bg-white/[0.04]">
+        <p class="font-medium">Two optional permissions</p>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn-ghost" @click="enableNotifications()" :disabled="notifyPerm !== 'default'"
+                  x-text="notifyPerm === 'granted' ? 'Notifications on' : notifyPerm === 'default' ? 'Allow break notifications' : 'Notifications unavailable'"></button>
+          <button class="btn-ghost" x-show="idleSupported" @click="enableIdle()" :disabled="idleOn"
+                  x-text="idleOn ? 'Away detection on' : 'Notice when I step away'"></button>
+        </div>
+        <p class="text-stone-600 dark:text-stone-400">Both can be changed later in Settings. ScreenCare works fine without them.</p>
+      </div>
+      <button class="btn-primary mt-7 w-full" @click="finishOnboarding()">Get started</button>
+    </div>
+  </div>
+
   {# ───────────────────────── Toasts ───────────────────────── #}
-  <div class="pointer-events-none fixed inset-x-0 top-4 z-40 flex flex-col items-center gap-2 px-4" role="status" aria-live="polite">
+  <div class="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center gap-2 px-4" role="status" aria-live="polite">
     <template x-for="t in toasts" :key="t.id">
       <div class="card pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl! py-3 pr-2 pl-5 text-sm animate-rise">
         <p class="flex-1" x-text="t.text"></p>
@@ -246,20 +276,20 @@
     <div class="card w-full max-w-md p-6 animate-rise" role="dialog" aria-modal="true" aria-labelledby="fb-title"
          x-trap.inert.noscroll="feedbackFor" @click.outside="feedbackFor = null">
       <h2 id="fb-title" class="font-display text-2xl">How was that focus block?</h2>
-      <p class="mt-1 text-sm text-stone-500">Adaptive mode uses this to tune your next block.</p>
+      <p class="mt-1 text-sm text-stone-600 dark:text-stone-400">Adaptive mode uses this to tune your next block.</p>
       <div class="mt-5 grid grid-cols-3 gap-2">
         <button class="btn-ghost" @click="finishWith('too_short')">Too short</button>
         <button class="btn-primary" @click="finishWith('just_right')">Just right</button>
         <button class="btn-ghost" @click="finishWith('too_long')">Too long</button>
       </div>
-      <button class="mt-4 text-sm text-stone-500 hover:underline" @click="finishWith(null)">Skip</button>
+      <button class="mt-4 text-sm text-stone-600 dark:text-stone-400 hover:underline" @click="finishWith(null)">Skip</button>
     </div>
   </div>
 
   {# ───────────────────────── Settings sheet ───────────────────────── #}
   <div x-show="settingsOpen" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="settingsOpen = false">
     <div class="absolute inset-0 bg-stone-950/40 backdrop-blur-sm" @click="settingsOpen = false" x-show="settingsOpen" x-transition.opacity></div>
-    <aside class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto bg-stone-50 p-6 shadow-2xl dark:bg-stone-900"
+    <div class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto bg-stone-50 p-6 shadow-2xl dark:bg-stone-900"
            role="dialog" aria-modal="true" aria-labelledby="settings-title" x-trap.inert.noscroll="settingsOpen"
            x-show="settingsOpen" x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full"
            x-transition:leave="transition duration-200 ease-in" x-transition:leave-end="translate-x-full">
@@ -278,16 +308,16 @@
             </select>
           </label>
           <label class="mt-3 flex items-start justify-between gap-4">
-            <span>Strict timing<span class="block text-sm text-stone-500">Don't fold water reminders into nearby breaks</span></span>
-            <input type="checkbox" role="switch" class="mt-1 size-5 accent-(--accent)" x-model="settings.hydration_strict">
+            <span>Strict timing<span class="block text-sm text-stone-600 dark:text-stone-400">Don't fold water reminders into nearby breaks</span></span>
+            <input type="checkbox" role="switch" class="switch mt-0.5" x-model="settings.hydration_strict">
           </label>
         </section>
 
         <section>
           <h3 class="eyebrow mb-3">Eyes</h3>
           <label class="flex items-start justify-between gap-4">
-            <span>Gentle eye-rest prompts<span class="block text-sm text-stone-500">A quiet in-page nudge, never a pop-up</span></span>
-            <input type="checkbox" role="switch" class="mt-1 size-5 accent-(--accent)" x-model="settings.eye_rest_enabled">
+            <span>Gentle eye-rest prompts<span class="block text-sm text-stone-600 dark:text-stone-400">A quiet in-page nudge, never a pop-up</span></span>
+            <input type="checkbox" role="switch" class="switch mt-0.5" x-model="settings.eye_rest_enabled">
           </label>
           <label class="mt-3 flex items-center justify-between gap-4">
             <span>Every</span>
@@ -309,10 +339,10 @@
 
         <section>
           <h3 class="eyebrow mb-3">Noticing when you step away</h3>
-          <p class="text-sm text-stone-500">Away time never counts as focus, and a few minutes away counts as a break. ScreenCare only learns <em>whether</em> you're active, never what you're doing.</p>
+          <p class="text-sm text-stone-600 dark:text-stone-400">Away time never counts as focus, and a few minutes away counts as a break. ScreenCare only learns <em>whether</em> you're active, never what you're doing.</p>
           <div class="mt-3 flex flex-wrap gap-2">
             <button class="btn-ghost" @click="enableIdle()" x-show="idleSupported" :disabled="idleOn" x-text="idleOn ? 'Detecting automatically' : 'Detect automatically'"></button>
-            <p x-show="!idleSupported" class="text-sm text-stone-500">This browser can't detect idle time. Use “Step away” while focusing; sleep and closed tabs are still noticed.</p>
+            <p x-show="!idleSupported" class="text-sm text-stone-600 dark:text-stone-400">This browser can't detect idle time. Use “Step away” while focusing; sleep and closed tabs are still noticed.</p>
           </div>
         </section>
 
@@ -327,14 +357,14 @@
           <div role="radiogroup" aria-label="Theme" class="inline-flex rounded-full border border-stone-900/10 p-1 dark:border-white/10">
             <template x-for="t in ['system', 'light', 'dark']">
               <button role="radio" :aria-checked="prefs.theme === t" @click="setTheme(t)" class="rounded-full px-4 py-1.5 text-sm capitalize"
-                      :class="prefs.theme === t ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-500'" x-text="t"></button>
+                      :class="prefs.theme === t ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'" x-text="t"></button>
             </template>
           </div>
         </section>
 
         <section>
           <h3 class="eyebrow mb-3">Your data</h3>
-          <p class="text-sm text-stone-500">Everything stays in this browser. No account, nothing stored on a server.</p>
+          <p class="text-sm text-stone-600 dark:text-stone-400">Everything stays in this browser. No account, nothing stored on a server.</p>
           <div class="mt-3 flex flex-wrap gap-2">
             <button class="btn-ghost" @click="exportData()">{{ icon("download", "size-4") }} Export</button>
             <label class="btn-ghost cursor-pointer">{{ icon("upload", "size-4") }} Import
@@ -344,9 +374,9 @@
           </div>
         </section>
 
-        <p class="text-xs text-stone-500">ScreenCare offers wellness suggestions, not medical advice.</p>
+        <p class="text-xs text-stone-600 dark:text-stone-400">ScreenCare offers wellness suggestions, not medical advice.</p>
       </div>
-    </aside>
+    </div>
   </div>
 </body>
 </html>

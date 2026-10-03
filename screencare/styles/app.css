@@ -75,7 +75,7 @@
   @apply rounded-(--radius-card) border border-stone-900/5 bg-white/70 shadow-xl shadow-stone-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/55 dark:shadow-black/30;
 }
 @utility btn {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition duration-200 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex min-h-11 whitespace-nowrap items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition duration-200 disabled:cursor-not-allowed disabled:opacity-40;
 }
 @utility btn-primary {
   @apply btn text-stone-950 shadow-lg hover:brightness-110 active:scale-[0.98];
@@ -86,7 +86,7 @@
   @apply btn border border-stone-900/10 bg-stone-900/[0.03] hover:bg-stone-900/[0.07] dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.09];
 }
 @utility icon-btn {
-  @apply inline-flex size-11 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-900/5 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-white;
+  @apply inline-flex size-11 items-center justify-center rounded-full text-stone-600 dark:text-stone-400 transition hover:bg-stone-900/5 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-white;
 }
 @utility chip {
   @apply inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-900/10 px-4 text-sm transition dark:border-white/10;
@@ -98,8 +98,20 @@
 @utility field {
   @apply w-full rounded-2xl border border-stone-900/10 bg-white/60 px-4 py-3 text-base placeholder:text-stone-400 focus:outline-none focus-visible:outline-2 dark:border-white/10 dark:bg-stone-950/40;
 }
+@utility switch {
+  @apply relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-stone-300 transition-colors disabled:opacity-40 dark:bg-stone-700;
+  &::after {
+    @apply absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform content-[''];
+  }
+  &:checked {
+    background: var(--accent);
+  }
+  &:checked::after {
+    @apply translate-x-5;
+  }
+}
 @utility eyebrow {
-  @apply text-xs font-semibold tracking-[0.18em] text-stone-500 uppercase dark:text-stone-400;
+  @apply text-xs font-semibold tracking-[0.18em] text-stone-600 dark:text-stone-400 uppercase dark:text-stone-400;
 }
 
 @media (prefers-reduced-motion: reduce) {

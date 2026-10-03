@@ -29,7 +29,8 @@ document.addEventListener("alpine:init", () => {
       RING,
       session: saved.session || null,
       settings: { ...window.SCREENCARE.defaults, ...saved.settings },
-      prefs: { theme: "system", idle: false, ...saved.prefs },
+      // Anyone with history has effectively been onboarded already.
+      prefs: { theme: "system", idle: false, onboarded: !!saved.history?.length, ...saved.prefs },
       history: saved.history || [],
       lastBeat: saved.lastBeat || 0,
       now: Date.now(),
@@ -100,7 +101,8 @@ document.addEventListener("alpine:init", () => {
         } else if (e.event === "notify") {
           if (document.hidden && this.notifyPerm === "granted") {
             new Notification(e.title, { body: e.body, tag: e.type, icon: "/icons/icon.svg" });
-          } else {
+          } else if (e.type !== "recovery") {
+            // The recovery screen itself says it's break time; a toast would repeat it.
             this.toast(`${e.title} ${e.body}`, e.type);
           }
         } else if (e.event === "banner") {
@@ -161,7 +163,7 @@ document.addEventListener("alpine:init", () => {
         if (p === "focusing" || p === "paused") return this.left(this.session.focus);
         if (p === "breaking" || p === "idea_walk") return this.left(this.session.rest);
         if (p === "idle") return this.modeSeconds(this.mode);
-        return 0;
+        return this.session.recovery_s || 0; // recovery due: show the suggested break length
       },
 
       get clock() {
@@ -249,6 +251,11 @@ document.addEventListener("alpine:init", () => {
       },
 
       // -- actions -----------------------------------------------------------------
+
+      finishOnboarding() {
+        this.prefs.onboarded = true;
+        this.save();
+      },
 
       async start() {
         this.enableNotifications();
@@ -360,17 +367,18 @@ document.addEventListener("alpine:init", () => {
 
       get tiles() {
         const t = this.summary.today;
+        const n = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
         return [
-          { label: "Focused", value: `${t.focus_minutes}m`, hint: `${t.sessions} blocks · longest ${t.longest_session_minutes}m` },
-          { label: "Breaks taken", value: t.breaks_taken, hint: `${t.breaks_skipped} skipped · ${t.walks} walks` },
+          { label: "Focused", value: `${t.focus_minutes}m`, hint: `${n(t.sessions, "block")} · longest ${t.longest_session_minutes}m` },
+          { label: "Breaks taken", value: t.breaks_taken, hint: `${t.breaks_skipped} skipped · ${n(t.walks, "walk")}` },
           { label: "Away from screen", value: `${t.away_minutes}m`, hint: "noticed automatically" },
-          { label: "Water", value: t.drinks, hint: `${t.ideas} ideas captured` },
+          { label: "Water", value: t.drinks, hint: t.ideas ? `${n(t.ideas, "idea")} captured too` : "drinks logged" },
         ];
       },
 
       barHeight(minutes) {
         const max = Math.max(60, ...this.summary.trend.map((d) => d.focus_minutes));
-        return (minutes / max) * 140;
+        return (minutes / max) * 150;
       },
 
       get trendLabel() {
