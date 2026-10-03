@@ -6,9 +6,8 @@ reminders merged into one well-timed break instead of five separate nags.
 
 **Focus deeply → step away → move → hydrate → return refreshed.**
 
-> **Status:** the web version runs locally and is ready to deploy on Vercel
-> (`uvicorn app:app --reload` to try it). Remaining work is in
-> [docs/PLAN.md](docs/PLAN.md). The original Windows desktop app and its specs
+> **Status: v1.0.** Runs locally and deploys to Vercel with no configuration.
+> What's next is in [docs/PLAN.md](docs/PLAN.md). The original Windows desktop app and its specs
 > are at git tag `desktop-final`.
 
 ## Run it locally
@@ -31,11 +30,12 @@ source .venv/bin/activate           # macOS / Linux
 pip install -e ".[dev]"
 
 # 5. Start the server
-uvicorn app:app --reload
+uvicorn dev:app --reload
 ```
 
 Open **http://127.0.0.1:8000** and start a focus block. `--reload` restarts
-the server when you edit Python files.
+the server when you edit Python files. (`dev.py` is the deployed app plus
+local serving of `public/`. On Vercel, the CDN serves `public/`.)
 
 > **Windows: "running scripts is disabled on this system"?** PowerShell's
 > default execution policy (*Restricted*) blocks every `.ps1` script,
@@ -49,7 +49,7 @@ the server when you edit Python files.
 > `RemoteSigned` still requires downloaded scripts to be signed. If you'd
 > rather not change it, skip activation and call the venv directly:
 > `.venv\Scripts\python -m pip install -e ".[dev]"`, then
-> `.venv\Scripts\python -m uvicorn app:app --reload`. Or use
+> `.venv\Scripts\python -m uvicorn dev:app --reload`. Or use
 > `.venv\Scripts\activate.bat` from `cmd`.
 
 ### Optional
@@ -75,15 +75,51 @@ The first `tailwindcss` run downloads the Tailwind binary. Commit the rebuilt
 
 ## Deploy to Vercel
 
-1. Push the repo to GitHub.
-2. In Vercel: **Add New → Project**, import the repo, and keep the defaults
-   (no build command, no output directory). Vercel detects the FastAPI `app` in
-   `app.py`, installs dependencies from `pyproject.toml`, and serves `public/`
-   from its CDN.
-3. Every push gets a preview URL. Merging to `main` deploys production.
+ScreenCare needs no Vercel configuration. Vercel finds the FastAPI `app` in
+`app.py`, installs dependencies from `pyproject.toml`, and serves `public/`
+from its CDN. Nothing is stored server-side, so there's no database or
+environment variables to set up.
 
-Or, with the CLI: `npm i -g vercel`, then run `vercel` (preview) or
-`vercel --prod` from the repo root.
+### From the dashboard (recommended)
+
+1. **Push the code to GitHub** (GitLab and Bitbucket work too):
+   ```bash
+   git push -u origin main
+   ```
+2. Sign in at [vercel.com](https://vercel.com) and choose **Add New… → Project**.
+3. **Import** the ScreenCare repository. Give Vercel access to it if it isn't listed.
+4. On the configuration screen, keep the defaults:
+   - **Framework Preset**: FastAPI (detected automatically)
+   - **Root Directory**: `./`
+   - **Build Command / Output Directory**: leave empty
+   - **Environment Variables**: none
+5. Click **Deploy**. After about a minute you get a URL like
+   `screencare-<you>.vercel.app`.
+6. Open it and check:
+   - `/api/health` returns `{"status":"ok"}`
+   - the page loads and a focus block starts
+7. Optional: **Settings → Domains** to add your own domain.
+
+After that, every push to another branch gets its own **preview URL**, and
+every push or merge to `main` deploys **production**.
+
+### From the command line
+
+```bash
+npm i -g vercel        # needs Node.js
+vercel login
+vercel                 # first run links the project and creates a preview
+vercel --prod          # deploy to production
+```
+
+### Good to know
+
+- **HTTPS is required** for notifications, idle detection, and installing as
+  an app. Vercel URLs already use it.
+- If you change templates or styles, rebuild `public/app.css` (see
+  [Optional](#optional)) and commit it. Vercel doesn't run Tailwind.
+- To roll back, use **Deployments → ⋯ → Promote to Production** on any
+  earlier deployment.
 
 ## Docs
 

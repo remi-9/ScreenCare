@@ -17,11 +17,13 @@ If Windows says scripts are disabled, run
 ## Run locally
 
 ```bash
-uvicorn app:app --reload            # http://127.0.0.1:8000
+uvicorn dev:app --reload            # http://127.0.0.1:8000
 ```
 
-`vercel dev` also works if you have the Vercel CLI and want production-like
-routing for `public/`.
+`dev.py` wraps the deployed app (`app.py`) and also serves `public/`. Vercel
+forbids mounting `public/` in the deployed app, because its CDN serves those
+files. `vercel dev` also works if you have the Vercel CLI and want exact
+production routing.
 
 ## Styles
 
@@ -46,4 +48,5 @@ test.
 
 Push a branch to get a preview URL from Vercel; merge to `main` to deploy
 production. There's no build configuration: Vercel detects the FastAPI `app`
-in `app.py` and serves `public/` from its CDN.
+in `app.py` and serves `public/` from its CDN. Step-by-step setup is in the
+[README](README.md#deploy-to-vercel).

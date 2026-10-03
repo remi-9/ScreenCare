@@ -1,6 +1,6 @@
 # Overhaul plan: desktop app → web app on Vercel
 
-Status: **in progress** (October 2026). The decisions below were settled: rules run
+Status: **v1.0 complete** (October 2026). Only deployment and launch items remain. The decisions below were settled: rules run
 in stateless FastAPI on Vercel, the desktop app is tagged `desktop-final` and
 removed, and the frontend is Jinja + Tailwind + Alpine.
 
@@ -112,7 +112,7 @@ Each phase ends deployable, with `pytest` and `ruff check` green.
       Keep tests focused on behavior and drop the per-method tests of deleted
       internals. Target: ~50 tests, well under a second.
 - [x] `pyproject.toml`: `requires-python = ">=3.12"`, deps `fastapi`, `jinja2`;
-      dev deps `pytest`, `httpx`, `ruff`, `pytailwindcss`. Drop PySide6.
+      dev deps `pytest`, `httpx2`, `ruff`, `pytailwindcss`. Drop PySide6.
 
 ### Phase 2: API + first deploy (1 day)
 
