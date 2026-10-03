@@ -15,16 +15,7 @@ venv/
 htmlcov/
 .coverage
 
-# Application data — must never be committed
-*.sqlite3
-*.sqlite3-wal
-*.sqlite3-shm
 *.log
-
-# Nuitka / pyside6-deploy build output
-*.build/
-*.dist/
-*.onefile-build/
 build/
 dist/
 
@@ -34,3 +25,7 @@ dist/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Vercel / local env
+.vercel/
+.env*

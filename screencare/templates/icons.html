@@ -1,0 +1,23 @@
+{# Stroke icons in the Lucide style (24px grid, 2px stroke, round joins). #}
+{% macro icon(name, cls="size-5") -%}
+<svg class="{{ cls }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == "play" %}<path d="M6 3l14 9-14 9V3z"/>
+{%- elif name == "pause" %}<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
+{%- elif name == "stop" %}<rect x="5" y="5" width="14" height="14" rx="2"/>
+{%- elif name == "droplet" %}<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5S12.5 5.5 12 3c-.5 2.5-2 4.9-4 6.5S5 13 5 15a7 7 0 0 0 7 7z"/>
+{%- elif name == "moon" %}<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>
+{%- elif name == "sliders" %}<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
+{%- elif name == "chart" %}<path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/>
+{%- elif name == "timer" %}<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>
+{%- elif name == "x" %}<path d="M18 6 6 18M6 6l12 12"/>
+{%- elif name == "plus" %}<path d="M12 5v14M5 12h14"/>
+{%- elif name == "walk" %}<circle cx="13" cy="4" r="2"/><path d="m9 20 3-6 3 3v4M7 12l3-4 4 1 3 3M10 8l-1 5"/>
+{%- elif name == "bulb" %}<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
+{%- elif name == "check" %}<path d="M20 6 9 17l-5-5"/>
+{%- elif name == "download" %}<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>
+{%- elif name == "upload" %}<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>
+{%- elif name == "away" %}<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+{%- endif %}
+</svg>
+{%- endmacro %}
