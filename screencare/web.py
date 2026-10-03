@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from screencare import rules
+from screencare import messages, rules
 from screencare.summary import dashboard
 
 ROOT = Path(__file__).resolve().parent
@@ -48,6 +48,7 @@ def index(request: Request) -> HTMLResponse:
                 ("deep", "Deep focus", "50 · 8"),
             ],
             "defaults": rules.Settings().model_dump(),
+            "copy": messages.UI,
             "max_extensions": rules.MAX_EXTENSIONS,
         },
     )
