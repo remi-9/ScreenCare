@@ -19,10 +19,10 @@ browser ──(state, action)──▶ POST /api/act ──▶ rules.apply() ─
 
 ```text
 app.py                  Vercel entrypoint: `from screencare.web import app`
-dev.py                  local server: the same app + `public/` (never deployed)
 screencare/
   rules.py              the whole product logic: Settings, Session, apply()
   summary.py            dashboard aggregation over history records
+  messages.py           every user-facing message, with variations
   web.py                FastAPI routes + Jinja rendering
   templates/            index.html (the whole page), icons.html (SVG macro)
   styles/app.css        Tailwind source (tokens in @theme)

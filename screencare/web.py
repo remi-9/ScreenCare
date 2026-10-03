@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+import mimetypes
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from screencare import rules
+from screencare import messages, rules
 from screencare.summary import dashboard
 
 ROOT = Path(__file__).resolve().parent
+PUBLIC = ROOT.parent / "public"
+
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 app = FastAPI(title="ScreenCare", docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=ROOT / "templates")
@@ -44,6 +48,7 @@ def index(request: Request) -> HTMLResponse:
                 ("deep", "Deep focus", "50 · 8"),
             ],
             "defaults": rules.Settings().model_dump(),
+            "copy": messages.UI,
             "max_extensions": rules.MAX_EXTENSIONS,
         },
     )
@@ -69,3 +74,14 @@ def summary(body: SummaryRequest) -> dict[str, Any]:
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# Declared last so every route above wins. On Vercel the CDN answers public/
+# paths before the app sees them (and Vercel forbids mounting public/), so this
+# only does work when running locally with `uvicorn app:app`.
+@app.get("/{path:path}", include_in_schema=False)
+def public_file(path: str) -> FileResponse:
+    file = (PUBLIC / path).resolve()
+    if not file.is_file() or not file.is_relative_to(PUBLIC):
+        raise HTTPException(status_code=404)
+    return FileResponse(file)

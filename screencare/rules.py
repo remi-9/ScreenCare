@@ -16,6 +16,8 @@ from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, Field
 
+from screencare import messages as msg
+
 
 def _clamped(lo: int, hi: int):
     return AfterValidator(lambda v: max(lo, min(hi, v)))
@@ -170,6 +172,9 @@ class _Ctx:
     def record(self, **fields: Any) -> None:
         self.events.append({"event": "record", **fields})
 
+    def pick(self, options: list[str], salt: str = "") -> str:
+        return msg.pick(options, self.now, salt)
+
     def require(self, *phases: Phase) -> None:
         if self.s.phase not in phases:
             raise InvalidAction(f"can't do that while {self.s.phase.value.replace('_', ' ')}")
@@ -268,23 +273,21 @@ def _on_focus_due(ctx: _Ctx, due_at: datetime) -> None:
         or (hydration_left is not None and hydration_left <= HYDRATION_MERGE_WINDOW_S)
     ):
         s.hydration_pending = True
-    if s.hydration_pending and s.eye_pending:
-        body = "Walk around, rest your eyes, and get some water."
-    elif s.hydration_pending:
-        body = "Walk around and get some water."
-    elif s.eye_pending:
-        body = "Walk around and rest your eyes."
-    else:
-        body = "Stand up and walk around for a few minutes."
-    ctx.notify("Time for a reset.", body, "recovery")
+    bodies = msg.RECOVERY_BODIES[(s.hydration_pending, s.eye_pending)]
+    ctx.notify(ctx.pick(msg.RECOVERY_TITLES), ctx.pick(bodies, "body"), "recovery")
 
 
 def _on_rest_due(ctx: _Ctx, _due_at: datetime) -> None:
     ctx.s.rest.clear()
     if ctx.s.phase is Phase.BREAKING:
-        ctx.notify("Break's up.", "Come back whenever you're ready.", "break_over")
+        title, body = ctx.pick(msg.BREAK_OVER_TITLES), ctx.pick(msg.BREAK_OVER_BODIES, "body")
+        ctx.notify(title, body, "break_over")
     elif ctx.s.phase is Phase.IDEA_WALK:
-        ctx.notify("Welcome back.", "Anything come to mind?", "idea_walk_over")
+        title, body = (
+            ctx.pick(msg.IDEA_WALK_OVER_TITLES),
+            ctx.pick(msg.IDEA_WALK_OVER_BODIES, "body"),
+        )
+        ctx.notify(title, body, "idea_walk_over")
 
 
 def _on_hydration_due(ctx: _Ctx, _due_at: datetime) -> None:
@@ -298,8 +301,9 @@ def _on_hydration_due(ctx: _Ctx, _due_at: datetime) -> None:
     if not ctx.settings.hydration_strict and (near_break or in_break):
         s.hydration_pending = True  # folded into the (upcoming) break
         return
-    ctx.notify("Hydration", "Time to drink some water.", "hydration")
-    ctx.banner("💧 Time to drink some water.", "hydration")
+    body = ctx.pick(msg.HYDRATION_BODIES, "body")
+    ctx.notify(ctx.pick(msg.HYDRATION_TITLES), body, "hydration")
+    ctx.banner(f"💧 {body}", "hydration")
 
 
 def _on_eye_due(ctx: _Ctx, _due_at: datetime) -> None:
@@ -307,7 +311,7 @@ def _on_eye_due(ctx: _Ctx, _due_at: datetime) -> None:
     # notification that would break focus.
     ctx.s.eye.clear()
     ctx.s.eye_pending = True
-    ctx.banner("👀 Look at something far away for 20 seconds.", "eye_rest")
+    ctx.banner(ctx.pick(msg.EYE_REST), "eye_rest")
 
 
 # -- actions -----------------------------------------------------------------------
@@ -493,7 +497,7 @@ def _back(ctx: _Ctx) -> None:
             s.hydration.start(ctx.settings.hydration_minutes * 60, ctx.now)
             s.hydration_pending = False
         _finish(ctx, "completed")
-        ctx.banner("Welcome back. That counted as your break.", "welcome_back")
+        ctx.banner(ctx.pick(msg.WELCOME_BACK), "welcome_back")
 
 
 def _since(ctx: _Ctx) -> datetime:

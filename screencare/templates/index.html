@@ -1,4 +1,5 @@
 {% from "icons.html" import icon %}
+{% from "colors.html" import color_pickers %}
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
@@ -21,18 +22,21 @@
       document.documentElement.dataset.theme = dark ? "dark" : "light";
     } catch {}
   </script>
-  <script>window.SCREENCARE = {{ {"defaults": defaults, "maxExtensions": max_extensions} | tojson }};</script>
+  <script>window.SCREENCARE = {{ {"defaults": defaults, "maxExtensions": max_extensions, "copy": copy} | tojson }};</script>
   <script defer src="/app.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.9/dist/cdn.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
 </head>
-<body x-data="screencare" :style="{ '--accent': accent }" class="relative overflow-x-hidden">
+<body x-data="screencare" :style="themeVars" class="relative overflow-x-hidden">
 
-  {# Ambient light: slowly drifts toward the current phase's hue. #}
+  {# overflow-x-clip: ripples may spread past a phone's edge without making the page pan sideways. #}
+  <div class="breath-root overflow-x-clip" :class="breathing ? 'is-breathing' : calmBreath && 'is-calm'">
+
+  {# Ambient light: drifts toward the current phase's hue and breathes with the ring. #}
   <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-    <div class="absolute -top-1/3 left-1/2 size-[70rem] -translate-x-1/2 rounded-full opacity-25 blur-3xl transition-[background] duration-[3000ms] animate-drift dark:opacity-30"
+    <div class="breath-bg absolute -top-1/3 left-1/2 size-[70rem] -translate-x-1/2 rounded-full blur-3xl transition-[background] duration-[3000ms] animate-drift"
          style="background: radial-gradient(closest-side, var(--accent), transparent)"></div>
-    <div class="absolute -bottom-1/2 -left-1/4 size-[50rem] rounded-full bg-amber-200/30 blur-3xl dark:bg-stone-700/20"></div>
+    <div class="breath-bg-counter absolute -bottom-1/2 -left-1/4 size-[50rem] rounded-full bg-amber-200/30 blur-3xl dark:bg-stone-700/25"></div>
   </div>
 
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 btn-ghost">Skip to content</a>
@@ -40,13 +44,13 @@
   <header class="mx-auto flex max-w-5xl items-center justify-between px-4 pt-5 sm:px-6">
     <a href="/" class="flex items-center gap-3 rounded-full pr-2">
       <span class="relative grid size-9 place-items-center">
-        <span class="absolute inset-0 rounded-full opacity-40 animate-breathe" style="background: var(--accent)"></span>
+        <span class="absolute inset-0 rounded-full opacity-40" style="background: var(--accent)"></span>
         <span class="size-3.5 rounded-full" style="background: var(--accent)"></span>
       </span>
-      <span class="font-display text-xl tracking-tight">ScreenCare</span>
+      <span class="font-display text-xl tracking-tight max-[420px]:sr-only">ScreenCare</span>
     </a>
 
-    <nav aria-label="Primary" class="flex items-center gap-1">
+    <nav aria-label="Primary" class="relative flex items-center gap-1">
       <div role="tablist" aria-label="View" class="mr-1 hidden rounded-full border border-stone-900/10 p-1 sm:flex dark:border-white/10">
         <button role="tab" :aria-selected="view === 'focus'" @click="view = 'focus'"
                 class="rounded-full px-4 py-1.5 text-sm transition" :class="view === 'focus' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'">Focus</button>
@@ -61,7 +65,23 @@
       <button class="icon-btn" @click="drink()" aria-label="Log a drink of water" title="Log a drink">{{ icon("droplet") }}</button>
       <button class="icon-btn" @click="toggleQuiet()" :aria-pressed="isQuiet"
               :aria-label="isQuiet ? 'Resume reminders' : 'Pause reminders for ' + settings.quiet_minutes + ' minutes'"
-              :class="isQuiet && 'text-(--accent)!'">{{ icon("moon") }}</button>
+              :class="isQuiet && 'text-(--accent)!'">{{ icon("bell-off") }}</button>
+      <button class="icon-btn" @click="colorsOpen = !colorsOpen" aria-label="Colors" title="Colors"
+              aria-haspopup="dialog" :aria-expanded="colorsOpen" aria-controls="colors-popover"
+              :class="colorsOpen && 'bg-stone-900/5 text-stone-900 dark:bg-white/10 dark:text-white'">{{ icon("palette") }}</button>
+      <div id="colors-popover" x-show="colorsOpen" x-cloak role="dialog" aria-label="Colors"
+           x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 -translate-y-1"
+           x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 -translate-y-1"
+           @click.outside="colorsOpen = false" @keydown.escape.window="colorsOpen = false"
+           class="card absolute top-full right-0 z-40 mt-2 w-[min(20.5rem,calc(100vw-2rem))] rounded-3xl! bg-stone-50/95! p-5 dark:bg-stone-900/95!">
+        <p class="eyebrow">Colors</p>
+        {{ color_pickers() }}
+      </div>
+      <button class="icon-btn" @click="toggleTheme()" :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+              :title="isDark ? 'Light theme' : 'Dark theme'">
+        <span x-show="isDark">{{ icon("sun") }}</span>
+        <span x-show="!isDark" x-cloak>{{ icon("moon") }}</span>
+      </button>
       <button class="icon-btn" @click="settingsOpen = true" aria-label="Settings" aria-haspopup="dialog">{{ icon("sliders") }}</button>
     </nav>
   </header>
@@ -71,7 +91,7 @@
     {# Status line: quiet mode / away #}
     <div class="mb-6 flex min-h-8 flex-wrap justify-center gap-2 text-sm" aria-live="polite">
       <span x-show="isQuiet" x-cloak class="chip min-h-8! border-transparent bg-stone-900/5 dark:bg-white/10">
-        {{ icon("moon", "size-4") }} Reminders paused · <span x-text="quietLeft"></span>
+        {{ icon("bell-off", "size-4") }} Reminders paused · <span x-text="quietLeft"></span>
       </span>
       <span x-show="isAway" x-cloak class="chip min-h-8! border-transparent bg-stone-900/5 dark:bg-white/10">
         {{ icon("away", "size-4") }} Away. Timers paused.
@@ -83,9 +103,18 @@
 
       {# The ring #}
       <div class="relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center">
-        <div aria-hidden="true" class="absolute inset-10 rounded-full opacity-15 blur-3xl transition-colors duration-1000"
-             :class="breathing && 'animate-breathe'" style="background: var(--accent)"></div>
-        <svg viewBox="0 0 240 240" class="absolute inset-0 -rotate-90" role="progressbar"
+        <div aria-hidden="true" class="breath-glow absolute inset-10 rounded-full blur-3xl transition-colors duration-1000" style="background: var(--accent)"></div>
+        <div aria-hidden="true" class="breath-blob absolute inset-[20%] blur-2xl" style="background: var(--accent)"></div>
+        <div aria-hidden="true" class="breath-blob is-second absolute inset-[26%] blur-2xl" style="background: color-mix(in oklab, var(--accent), white 35%)"></div>
+        <div aria-hidden="true" class="breath-ripple absolute inset-[7%] rounded-full border-2"></div>
+        <div aria-hidden="true" class="breath-ripple is-second absolute inset-[7%] rounded-full border"></div>
+        <div aria-hidden="true" class="breath-lung absolute inset-[7%] rounded-full border-[3px]"></div>
+        <div aria-hidden="true" class="breath-orbit absolute inset-[7%]">
+          <div class="absolute inset-0"><span class="absolute top-0 left-1/2 size-2 -translate-1/2 rounded-full"></span></div>
+          <div class="absolute inset-0 rotate-[130deg]"><span class="absolute top-0 left-1/2 size-1.5 -translate-1/2 rounded-full"></span></div>
+          <div class="absolute inset-0 rotate-[245deg]"><span class="absolute top-0 left-1/2 size-1 -translate-1/2 rounded-full"></span></div>
+        </div>
+        <svg viewBox="0 0 240 240" class="breath-ring absolute inset-0 -rotate-90" role="progressbar"
              aria-label="Progress of the current phase" aria-valuemin="0" aria-valuemax="100"
              :aria-valuenow="Math.round(progress * 100)" :aria-valuetext="ariaClock">
           <circle cx="120" cy="120" r="108" fill="none" stroke-width="6" class="stroke-stone-900/[0.07] dark:stroke-white/[0.08]"/>
@@ -93,10 +122,17 @@
                   stroke="var(--accent)" :stroke-dasharray="RING" :stroke-dashoffset="RING * (1 - progress)"
                   class="transition-[stroke-dashoffset,stroke] duration-1000 ease-linear"/>
         </svg>
-        <div class="relative text-center">
-          <p class="eyebrow" x-text="phaseLabel"></p>
+        <div class="breath-text relative text-center">
+          <p class="eyebrow dark:text-stone-300!" x-text="phaseLabel"></p>
           <p class="mt-2 font-display text-6xl tabular-nums sm:text-7xl" x-text="clock" aria-hidden="true"></p>
-          <p class="mt-2 max-w-[14rem] truncate text-sm text-stone-600 dark:text-stone-400" x-text="session.task || subline"></p>
+          <div class="mt-2 grid justify-items-center text-sm">
+            <p class="col-start-1 row-start-1 max-w-[14rem] truncate text-stone-600 transition-opacity duration-700 dark:text-stone-400"
+               :class="breathing && 'opacity-0'" x-text="session.task || subline"></p>
+            <p class="breath-cue col-start-1 row-start-1 grid text-stone-600 transition-opacity duration-700 dark:text-stone-300"
+               :class="!breathing && 'opacity-0'" aria-hidden="true">
+              <span class="cue-in">Breathe in…</span><span class="cue-out">…and out</span><span class="cue-still">Breathe slowly</span>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -105,8 +141,8 @@
 
         {# Idle: choose a mode #}
         <div x-show="session.phase === 'idle'" class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Ready for a focus block?</h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400">Focus deeply, then step away. Reminders are folded into your breaks.</p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]">Ready for a focus block?</h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]">Focus deeply, then step away. Reminders are folded into your breaks.</p>
 
           <fieldset class="mt-6">
             <legend class="eyebrow mb-3">Mode</legend>
@@ -133,8 +169,8 @@
 
         {# Focusing / paused #}
         <div x-show="session.phase === 'focusing' || session.phase === 'paused'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight" x-text="session.phase === 'paused' ? 'Paused.' : (overtime ? 'A little extra time.' : 'In the zone.')"></h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="session.phase === 'paused' ? 'Take your time. The clock is holding.' : 'Nothing to manage. ScreenCare will tell you when it\'s time to step away.'"></p>
+          <h1 class="font-display text-3xl tracking-tight" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <div class="mt-6 flex flex-wrap gap-2">
             <button x-show="session.phase === 'focusing'" class="btn-ghost" @click="act('pause')">{{ icon("pause", "size-4") }} Pause</button>
             <button x-show="session.phase === 'paused'" class="btn-primary" @click="act('resume')">{{ icon("play", "size-4") }} Resume</button>
@@ -147,8 +183,8 @@
 
         {# Recovery due: flow protection #}
         <div x-show="session.phase === 'recovery_due'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="postponed ? 'Your break is waiting.' : 'Focus complete. Time for a reset.'"></h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="recoveryCopy"></p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <div class="mt-6 flex flex-wrap gap-2">
             <button class="btn-primary" @click="act('start_break')">{{ icon("walk", "size-4") }} Start break</button>
             <button class="btn-ghost" @click="act('finish_thought')" :disabled="session.finish_thought_used">Finish this thought</button>
@@ -161,8 +197,8 @@
 
         {# Break #}
         <div x-show="session.phase === 'breaking'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Step away for a bit.</h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400">A few ideas, only if they feel good:</p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <div class="mt-5 flex flex-wrap gap-2">
             <template x-for="c in suggestions" :key="c.id">
               <button class="chip" :aria-pressed="!!picked[c.id]" @click="picked[c.id] = !picked[c.id]">
@@ -175,8 +211,8 @@
 
         {# Idea walk #}
         <div x-show="session.phase === 'idea_walk'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Take a 5-minute Idea Walk.</h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400">Step away from the screen and walk around. Don't force a solution. Give yourself space for possibilities.</p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <label for="note" class="eyebrow mt-6 mb-3 block">Anything come to mind?</label>
           <textarea id="note" x-model="note" rows="3" maxlength="2000" class="field resize-none" placeholder="Jot it down before it slips away…"></textarea>
           <div class="mt-4 flex flex-wrap gap-2">
@@ -231,6 +267,7 @@
       <p x-show="!summary" class="mt-8 text-stone-600 dark:text-stone-400">Loading…</p>
     </section>
   </main>
+  </div>{# .breath-root #}
 
   {# ───────────────────────── Onboarding (first visit) ───────────────────────── #}
   <div x-show="!prefs.onboarded" x-cloak data-onboarding class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-stone-950/50 p-4 backdrop-blur-md">
@@ -360,6 +397,8 @@
                       :class="prefs.theme === t ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'" x-text="t"></button>
             </template>
           </div>
+
+          {{ color_pickers() }}
         </section>
 
         <section>

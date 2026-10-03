@@ -38,7 +38,9 @@ so the accessibility checklist below applies to every component.
 ## Look and feel
 
 - **Dark-first, warm neutrals.** Base on stone/warm gray, not blue-black.
-  Light theme follows `prefers-color-scheme`, with a manual toggle in Settings.
+  Light theme follows `prefers-color-scheme` until the user picks one: the
+  sun/moon button in the header flips light/dark, and Settings can return to
+  System. Quiet mode uses a crossed-out bell so the moon only means "dark".
 - **One accent per phase**, so the screen tells you where you are at a glance:
   - Focus: indigo → violet
   - Recovery / break: teal → green
@@ -48,11 +50,26 @@ so the accessibility checklist below applies to every component.
   phase's hue over a few seconds. Static under `prefers-reduced-motion`.
 - **Soft glass cards**: subtle translucency and blur, generous radius
   (`rounded-3xl`), hairline borders instead of heavy shadows.
-- **Signature element: the ring.** A large SVG progress ring around the
-  timer. While focusing it fills smoothly. During a break it *breathes*
-  (4 s in, 6 s out), a quiet invitation to slow down. Under reduced motion it
-  simply shows progress.
-- **Copy is kind and short.** "Time for a reset." "Anything come to mind?"
+- **Signature element: the breathing ring.** Layers driven by one breath
+  (4 s in, 6 s out): a solid "lung" ring (white in dark theme, the accent in
+  light) that swells past the progress ring, ripples released at the top of
+  each breath, two slowly morphing color shapes, three orbiting points of
+  light, and a "Breathe in… / …and out" cue. The page background breathes
+  too: the phase-colored light swells while a warm light opposite moves
+  against it. Gentle (60%) while ready or focusing, full during breaks, still
+  when paused, and fully still under reduced motion.
+- **Your colors.** The palette button in the header (next to water and quiet
+  mode) opens a quick color popover, and Settings → Appearance has a *Focus color* and a *Break
+  color*: five curated swatches each, plus a custom color picker. Button text
+  switches between near-black and white automatically, whichever contrasts
+  better. The amber "postponed" color stays fixed, because it means
+  "overdue".
+- **Copy is kind and short.** "Time for a reset." "Anything come to mind?" Every message has a few
+  variations, all in `screencare/messages.py`. Server messages (notifications,
+  banners) are picked per moment. On-screen headlines are picked once per
+  phase, keyed to when the phase started, so they never change mid-phase but
+  each block reads a little differently. Buttons never vary, because
+  predictable controls matter more than variety.
   No exclamation marks, no guilt, no streaks.
 
 ### Design tokens (`styles/app.css`, `@theme`)
@@ -68,6 +85,15 @@ so the accessibility checklist below applies to every component.
   --radius-card: 1.5rem;
 }
 ```
+
+### Breathing, technically
+
+`--breath` and `--breath-amp` are registered with `@property` so the browser
+can interpolate them. Layers use `scale: calc(1 + k * var(--breath) *
+var(--breath-amp))`. Keep the cue spans rendered (never `display: none`), or
+their animation would restart out of step with the breath. Write `animation`
+shorthands with a name: Tailwind's minifier turns a name-less one into
+`animation: none`.
 
 ## Screens
 

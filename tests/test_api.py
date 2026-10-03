@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from dev import app
+from app import app
 
 client = TestClient(app)
 
@@ -42,6 +42,20 @@ def test_summary():
     response = client.post("/api/summary", json={"records": [], "tz_offset_minutes": 60})
     assert response.status_code == 200
     assert len(response.json()["trend"]) == 7
+
+
+def test_public_files_are_served_locally():
+    files = [("/app.js", "javascript"), ("/app.css", "css"), ("/manifest.webmanifest", "manifest")]
+    for path, kind in files:
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert kind in response.headers["content-type"]
+
+
+def test_public_files_cannot_escape_the_folder():
+    assert client.get("/../pyproject.toml").status_code == 404
+    assert client.get("/%2e%2e/pyproject.toml").status_code == 404
+    assert client.get("/missing.js").status_code == 404
 
 
 def test_health():

@@ -17,13 +17,12 @@ If Windows says scripts are disabled, run
 ## Run locally
 
 ```bash
-uvicorn dev:app --reload            # http://127.0.0.1:8000
+uvicorn app:app --reload            # http://127.0.0.1:8000
 ```
 
-`dev.py` wraps the deployed app (`app.py`) and also serves `public/`. Vercel
-forbids mounting `public/` in the deployed app, because its CDN serves those
-files. `vercel dev` also works if you have the Vercel CLI and want exact
-production routing.
+Locally the app serves `public/` itself through a last-resort route. On
+Vercel the CDN serves those files first, so the same `app.py` works in both
+places. `vercel dev` also works if you want exact production routing.
 
 ## Styles
 
