@@ -332,6 +332,61 @@ Design points:
 Everything else — `platform/` beyond `windows.py`/`factory.py` — still
 exists only as an empty package with a docstring.
 
+### Phase 6 — packaging
+
+```text
+pysidedeploy.spec          pyside6-deploy config: entry point, QML files, Qt modules/plugins, Nuitka mode
+packaging/icon.ico          generated app icon (multi-resolution: 16–256px), matches the tray icon's look
+packaging/build_windows.ps1  thin wrapper around `pyside6-deploy -c pysidedeploy.spec`
+```
+
+Design points:
+
+- **`pyside6-deploy` wrapping Nuitka**, per `Technical.md`'s "Final
+  Recommended Stack" — not a separate Nuitka invocation, so there's one
+  config file (`pysidedeploy.spec`) rather than two toolchains to keep in
+  sync. Its section/field names (`[app]`/`[python]`/`[qt]`/`[nuitka]`)
+  and the `--windows-console-mode=disable` Nuitka flag were verified
+  against current Qt for Python and Nuitka documentation rather than
+  guessed.
+- **`mode = standalone`, not the tool's default `onefile`.** A `onefile`
+  build self-extracts to a temp directory on *every* launch — real
+  startup latency and antivirus false-positive risk for an app that may
+  also auto-start at login (Phase 5) and is meant to sit quietly in the
+  tray all day. `standalone` (a folder of files, launched directly)
+  matches the "low resource usage" / "minimal interference" priorities
+  ahead of "ship one file" convenience. Documented as a switchable choice
+  in the spec file's own comments, not a hidden default.
+- **The console window is explicitly disabled** (`--windows-console-mode=disable`)
+  since this is a tray-resident GUI app, not a CLI tool.
+- **The icon is generated, not hand-drawn** — the same calm, single-color
+  dot as the tray icon (`app/bootstrap.py`'s `_build_tray_pixmap`), so the
+  taskbar/desktop icon and the tray icon read as the same app rather than
+  two different visual languages.
+
+**Deliberately not done in this phase:**
+
+- **No code signing.** `Technical.md` §44 explicitly scopes a signed
+  installer to "first release," treating it as security-sensitive and
+  "not to be improvised" — there's no certificate to sign with here, and
+  producing one is outside what a coding session can responsibly do.
+- **No installer (MSI/NSIS/etc.), just the standalone build.** An
+  installer is a reasonable next step once the standalone build itself is
+  confirmed working end-to-end on the user's machine — building one
+  before that would be packaging something unverified.
+- **No CI pipeline.** `Technical.md` §40 mentions "a small number of real
+  native integration tests on each OS runner," but that presumes a CI
+  service and a Windows runner already configured for this repository,
+  neither of which exists yet; the manual smoke-test checklist in
+  `DEVELOPMENT.md` covers the same acceptance criteria (`Technical.md`
+  §47's "Tray mode" scenario, in particular) until CI is worth setting up.
+- **None of this has actually been run.** Nuitka needs a native C
+  toolchain and PySide6, neither available in the cloud sandbox this
+  whole project has been built in — the spec file, icon, and build
+  script are reasoned through carefully against current tool
+  documentation, but only the user's Windows machine can confirm the
+  build actually produces a working, launchable executable.
+
 ## Planned phases
 
 Following `ScreenCare — Implementation Standards.md` §49 (repository
@@ -353,8 +408,8 @@ desktop shell):
    (`GetLastInputInfo`), lock/unlock (`WTSRegisterSessionNotification`),
    sleep/wake (`WM_POWERBROADCAST`), autostart, all behind the
    `activity`/`platform` interfaces; see above).
-6. **Packaging** — `pyside6-deploy` / Nuitka standalone build, measured
-   against the resource-efficiency targets in the technical spec.
+6. **Packaging** — done (`pysidedeploy.spec` + `packaging/build_windows.ps1`,
+   a standalone `pyside6-deploy`/Nuitka build; see above).
 7. **Other operating systems** — macOS/Linux adapters behind the same
    interfaces, once Windows is stable.
 8. **Polish** — adaptive-focus tuning, accessibility, theming, dashboard,

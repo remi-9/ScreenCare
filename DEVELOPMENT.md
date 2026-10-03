@@ -65,12 +65,54 @@ Fix reported issues rather than suppressing them. Formatting itself is not
 subjective here — run `ruff format .` to apply it rather than
 hand-formatting to match.
 
-## Building
+## Building a standalone Windows executable
 
-Not set up yet. The plan (per `ScreenCare — Technical.md` §36) is
-`pyside6-deploy` (a `pyside6-deploy`/Nuitka standalone build), configured
-via `pysidedeploy.spec` once there's a real application to package —
-targeted for the Phase 6 milestone in `ARCHITECTURE.md`.
+```powershell
+pip install nuitka   # or let the build script do it
+.\packaging\build_windows.ps1
+```
+
+That wraps `pyside6-deploy -c pysidedeploy.spec`, which itself wraps
+Nuitka (`ScreenCare — Technical.md`'s "Final Recommended Stack": "
+`pyside6-deploy` and Nuitka"). Requires a working dev install (`pip
+install -e ".[dev]"`) with PySide6 present, plus Nuitka's own build
+prerequisites (a C compiler — on Windows, either MSVC via the Visual
+Studio Build Tools, or MinGW64, which Nuitka can offer to download on
+first run). The build takes several minutes; output lands under `.\dist\`
+as a folder (`mode = standalone` in `pysidedeploy.spec` — deliberately not
+the tool's default `onefile`, which self-extracts to a temp directory on
+every launch; see the comment in that file for why that matters for an
+always-running, launch-at-login background app).
+
+**This can only be built and verified on a real Windows machine** —
+Nuitka needs a native C toolchain and PySide6, neither available in the
+cloud sandbox this project has otherwise been developed in. After
+building, run this smoke-test checklist by hand (`Technical.md` §40's
+"platform tests... run a small number of real native integration tests"
+and §47's acceptance criteria, applied to the packaged build specifically
+rather than just the dev environment):
+
+1. Launch `dist\ScreenCare.dist\ScreenCare.exe` directly (not via `python
+   -m screencare`) — no console window should appear, and the tray icon
+   should show up within a couple of seconds.
+2. Start a focus session, then close the main window — it should
+   minimize to the tray rather than quitting (Phase 4).
+3. Lock the session, wait, and unlock it; sleep and wake the machine
+   during a focus session — neither should be counted as focus time
+   (Phase 5).
+4. Check Task Manager while the window is hidden in the tray for a
+   few minutes: CPU usage should be negligible and memory stable, not
+   climbing (`Technical.md` §47's "Tray mode" acceptance scenario).
+5. Quit from the tray menu, then relaunch — history and settings from
+   step 2 should still be there (SQLite database persisted under
+   `%LOCALAPPDATA%`).
+6. Toggle "launch at login" in Settings and confirm the entry actually
+   appears/disappears in Windows' Startup Apps (Phase 5's autostart).
+
+Note that none of this — the spec file, the icon, the build script — has
+actually been run in this project yet; it's built and reasoned through
+carefully against current `pyside6-deploy`/Nuitka documentation, but only
+the user's machine can confirm it produces a working executable.
 
 ## Workflow for new milestones
 

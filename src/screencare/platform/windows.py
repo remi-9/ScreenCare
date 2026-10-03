@@ -27,6 +27,7 @@ cross-platform test suite; verify it manually there.
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import logging
 import sys
@@ -168,7 +169,5 @@ class WindowsAutostartService:
             if enabled:
                 winreg.SetValueEx(key, self._value_name, 0, winreg.REG_SZ, self._command())
                 return
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 winreg.DeleteValue(key, self._value_name)
-            except FileNotFoundError:
-                pass

@@ -33,6 +33,12 @@ qt_api = "pyside6"
 line-length = 100
 target-version = "py313"
 src = ["src", "tests"]
+# ruff format also formats fenced Python code blocks inside Markdown files.
+# This repo's *.md files are documentation (including reference copies of
+# the project's fixed spec docs, which this project must not edit for a
+# linter's cosmetic preference) rather than code samples meant to satisfy
+# ruff's own style rules, so exclude Markdown from both check and format.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
