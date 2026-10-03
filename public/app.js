@@ -98,6 +98,7 @@ document.addEventListener("alpine:init", () => {
       summary: null,
       settingsOpen: false,
       colorsOpen: false,
+      isDark: document.documentElement.dataset.theme === "dark",
       feedbackFor: null,
       picked: {},
       notifyPerm: "Notification" in window ? Notification.permission : "unsupported",
@@ -459,6 +460,12 @@ document.addEventListener("alpine:init", () => {
         const t = this.prefs.theme;
         const dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.dataset.theme = dark ? "dark" : "light";
+        this.isDark = dark;
+      },
+
+      // The header toggle picks an explicit theme; Settings can go back to "system".
+      toggleTheme() {
+        this.setTheme(this.isDark ? "light" : "dark");
       },
 
       setTheme(t) {

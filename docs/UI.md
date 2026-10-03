@@ -38,7 +38,9 @@ so the accessibility checklist below applies to every component.
 ## Look and feel
 
 - **Dark-first, warm neutrals.** Base on stone/warm gray, not blue-black.
-  Light theme follows `prefers-color-scheme`, with a manual toggle in Settings.
+  Light theme follows `prefers-color-scheme` until the user picks one: the
+  sun/moon button in the header flips light/dark, and Settings can return to
+  System. Quiet mode uses a crossed-out bell so the moon only means "dark".
 - **One accent per phase**, so the screen tells you where you are at a glance:
   - Focus: indigo → violet
   - Recovery / break: teal → green

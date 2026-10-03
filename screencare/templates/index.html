@@ -29,7 +29,8 @@
 </head>
 <body x-data="screencare" :style="themeVars" class="relative overflow-x-hidden">
 
-  <div class="breath-root" :class="breathing ? 'is-breathing' : calmBreath && 'is-calm'">
+  {# overflow-x-clip: ripples may spread past a phone's edge without making the page pan sideways. #}
+  <div class="breath-root overflow-x-clip" :class="breathing ? 'is-breathing' : calmBreath && 'is-calm'">
 
   {# Ambient light: drifts toward the current phase's hue and breathes with the ring. #}
   <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -64,7 +65,7 @@
       <button class="icon-btn" @click="drink()" aria-label="Log a drink of water" title="Log a drink">{{ icon("droplet") }}</button>
       <button class="icon-btn" @click="toggleQuiet()" :aria-pressed="isQuiet"
               :aria-label="isQuiet ? 'Resume reminders' : 'Pause reminders for ' + settings.quiet_minutes + ' minutes'"
-              :class="isQuiet && 'text-(--accent)!'">{{ icon("moon") }}</button>
+              :class="isQuiet && 'text-(--accent)!'">{{ icon("bell-off") }}</button>
       <button class="icon-btn" @click="colorsOpen = !colorsOpen" aria-label="Colors" title="Colors"
               aria-haspopup="dialog" :aria-expanded="colorsOpen" aria-controls="colors-popover"
               :class="colorsOpen && 'bg-stone-900/5 text-stone-900 dark:bg-white/10 dark:text-white'">{{ icon("palette") }}</button>
@@ -76,6 +77,11 @@
         <p class="eyebrow">Colors</p>
         {{ color_pickers() }}
       </div>
+      <button class="icon-btn" @click="toggleTheme()" :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+              :title="isDark ? 'Light theme' : 'Dark theme'">
+        <span x-show="isDark">{{ icon("sun") }}</span>
+        <span x-show="!isDark" x-cloak>{{ icon("moon") }}</span>
+      </button>
       <button class="icon-btn" @click="settingsOpen = true" aria-label="Settings" aria-haspopup="dialog">{{ icon("sliders") }}</button>
     </nav>
   </header>
@@ -85,7 +91,7 @@
     {# Status line: quiet mode / away #}
     <div class="mb-6 flex min-h-8 flex-wrap justify-center gap-2 text-sm" aria-live="polite">
       <span x-show="isQuiet" x-cloak class="chip min-h-8! border-transparent bg-stone-900/5 dark:bg-white/10">
-        {{ icon("moon", "size-4") }} Reminders paused · <span x-text="quietLeft"></span>
+        {{ icon("bell-off", "size-4") }} Reminders paused · <span x-text="quietLeft"></span>
       </span>
       <span x-show="isAway" x-cloak class="chip min-h-8! border-transparent bg-stone-900/5 dark:bg-white/10">
         {{ icon("away", "size-4") }} Away. Timers paused.
