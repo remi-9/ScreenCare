@@ -1,0 +1,12 @@
+{
+  "name": "ScreenCare",
+  "short_name": "ScreenCare",
+  "description": "Focus deeply, step away, move, hydrate, return refreshed.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1c1917",
+  "theme_color": "#1c1917",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@source "../templates";
+@source "../../public/app.js";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-focus: oklch(0.66 0.16 285);
+  --color-recover: oklch(0.74 0.12 170);
+  --color-hydrate: oklch(0.74 0.11 230);
+  --color-postpone: oklch(0.8 0.14 75);
+
+  --radius-card: 1.75rem;
+
+  --animate-breathe: breathe 10s ease-in-out infinite;
+  --animate-drift: drift 24s ease-in-out infinite alternate;
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes breathe {
+    0%,
+    100% {
+      transform: scale(0.94);
+      opacity: 0.75;
+    }
+    40% {
+      transform: scale(1.04);
+      opacity: 1;
+    }
+  }
+  @keyframes drift {
+    from {
+      transform: translate3d(-6%, -4%, 0) scale(1);
+    }
+    to {
+      transform: translate3d(6%, 5%, 0) scale(1.15);
+    }
+  }
+  @keyframes rise {
+    from {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --accent: var(--color-focus);
+    color-scheme: light;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
+  html {
+    @apply bg-stone-100 text-stone-800 antialiased dark:bg-stone-950 dark:text-stone-100;
+  }
+  body {
+    @apply min-h-dvh font-sans;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2;
+    outline-color: var(--accent);
+  }
+  [x-cloak] {
+    display: none !important;
+  }
+}
+
+/* Components are utilities in Tailwind v4, so they can @apply each other. */
+@utility card {
+  @apply rounded-(--radius-card) border border-stone-900/5 bg-white/70 shadow-xl shadow-stone-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/55 dark:shadow-black/30;
+}
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition duration-200 disabled:cursor-not-allowed disabled:opacity-40;
+}
+@utility btn-primary {
+  @apply btn text-stone-950 shadow-lg hover:brightness-110 active:scale-[0.98];
+  background: var(--accent);
+  box-shadow: 0 10px 30px -10px var(--accent);
+}
+@utility btn-ghost {
+  @apply btn border border-stone-900/10 bg-stone-900/[0.03] hover:bg-stone-900/[0.07] dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.09];
+}
+@utility icon-btn {
+  @apply inline-flex size-11 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-900/5 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-white;
+}
+@utility chip {
+  @apply inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-900/10 px-4 text-sm transition dark:border-white/10;
+  &[aria-pressed="true"] {
+    @apply border-transparent text-stone-950;
+    background: var(--color-recover);
+  }
+}
+@utility field {
+  @apply w-full rounded-2xl border border-stone-900/10 bg-white/60 px-4 py-3 text-base placeholder:text-stone-400 focus:outline-none focus-visible:outline-2 dark:border-white/10 dark:bg-stone-950/40;
+}
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-[0.18em] text-stone-500 uppercase dark:text-stone-400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
