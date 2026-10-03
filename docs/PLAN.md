@@ -97,62 +97,62 @@ Each phase ends deployable, with `pytest` and `ruff check` green.
 
 ### Phase 1: pure rules core (1–2 days)
 
-- [ ] Delete `app/`, `ui/`, `platform/`, `activity/`, `notifications/`,
+- [x] Delete `app/`, `ui/`, `platform/`, `activity/`, `notifications/`,
       `persistence/`, `scheduler/`, `packaging/`, `pysidedeploy.spec`, `tests/ui/`.
-- [ ] Flatten `src/screencare/` → `screencare/` (simpler imports on Vercel).
-- [ ] Write `screencare/rules.py`: `Settings`, `Session` (Pydantic models) and
+- [x] Flatten `src/screencare/` → `screencare/` (simpler imports on Vercel).
+- [x] Write `screencare/rules.py`: `Settings`, `Session` (Pydantic models) and
       `apply(session, action, now, settings) -> Result(session, events)`.
       Port the logic from `focus_engine.py`, `hydration_engine.py`,
       `eye_rest_engine.py`, `wellness_coordinator.py`, `adaptive_focus.py`,
       and `break_engine.py`. Expect ~300 lines total.
-- [ ] Move `analytics/summary.py` → `screencare/summary.py` as-is (already pure).
-- [ ] Port the acceptance scenarios as tests with explicit `now`: sleep
+- [x] Move `analytics/summary.py` → `screencare/summary.py` as-is (already pure).
+- [x] Port the acceptance scenarios as tests with explicit `now`: sleep
       mid-session isn't counted, natural break credited, hydration merges into
       a nearby break, extension limit, reload/closed-tab gap, quiet mode.
       Keep tests focused on behavior and drop the per-method tests of deleted
       internals. Target: ~50 tests, well under a second.
-- [ ] `pyproject.toml`: `requires-python = ">=3.12"`, deps `fastapi`, `jinja2`;
+- [x] `pyproject.toml`: `requires-python = ">=3.12"`, deps `fastapi`, `jinja2`;
       dev deps `pytest`, `httpx`, `ruff`, `pytailwindcss`. Drop PySide6.
 
 ### Phase 2: API + first deploy (1 day)
 
-- [ ] `screencare/web.py`: FastAPI app with `GET /` (render page), `POST
+- [x] `screencare/web.py`: FastAPI app with `GET /` (render page), `POST
       /api/act`, `POST /api/summary`, `GET /api/health`.
-- [ ] `app.py` at the repo root exporting `app` (Vercel's zero-config FastAPI
+- [x] `app.py` at the repo root exporting `app` (Vercel's zero-config FastAPI
       entrypoint), static files in `public/`.
-- [ ] API tests via FastAPI's `TestClient`.
+- [x] API tests via FastAPI's `TestClient`.
 - [ ] Connect the repo to Vercel. Every push gets a preview URL and `main`
       deploys to production. That preview *is* the integration test.
 
 ### Phase 3: the UI (2–3 days)
 
-- [ ] Build the design in [UI.md](UI.md): Focus, In-session, Recovery due,
+- [x] Build the design in [UI.md](UI.md): Focus, In-session, Recovery due,
       Break, Idea Walk, Dashboard, Settings.
-- [ ] Tailwind v4 via `pytailwindcss`. Commit the built `public/app.css` so
+- [x] Tailwind v4 via `pytailwindcss`. Commit the built `public/app.css` so
       Vercel needs no Node build step.
-- [ ] Alpine.js (pinned, from jsdelivr) for the countdown ring, toasts,
+- [x] Alpine.js (pinned, from jsdelivr) for the countdown ring, toasts,
       and forms. Target: one `public/app.js`, ~300 lines.
 
 ### Phase 4: browser integrations (1–2 days)
 
-- [ ] `localStorage` persistence of state, settings, and history (versioned
+- [x] `localStorage` persistence of state, settings, and history (versioned
       key, so a future format change can migrate or reset cleanly). JSON
       export/import in Settings.
-- [ ] Presence: `IdleDetector` (Chromium, asks permission, 60 s minimum
+- [x] Presence: `IdleDetector` (Chromium, asks permission, 60 s minimum
       threshold, also reports screen lock). Everywhere else: a 15 s heartbeat,
       where a wall-clock gap of more than 2 min means away for that gap. That
       one rule also covers laptop sleep, a closed tab, and a browser crash.
       Manual "Step away" button as the universal fallback.
-- [ ] Notifications: request permission on first focus start, not on page
+- [x] Notifications: request permission on first focus start, not on page
       load. System notification only when the page is hidden; in-page toast
       otherwise. Eye-rest is never a system notification.
-- [ ] PWA: manifest + minimal service worker, so ScreenCare can be installed
+- [x] PWA: manifest + minimal service worker, so ScreenCare can be installed
       into its own window. That's the closest web equivalent of "lives in the
       tray".
 
 ### Phase 5: dashboard, accessibility, polish (1–2 days)
 
-- [ ] Dashboard via `/api/summary` (today + 7-day trend).
+- [x] Dashboard via `/api/summary` (today + 7-day trend).
 - [ ] Accessibility pass against the checklist in [UI.md](UI.md) (keyboard-only
       run-through, screen reader spot check, reduced motion, 200% zoom).
 - [ ] Onboarding: one screen explaining modes and asking for notification /

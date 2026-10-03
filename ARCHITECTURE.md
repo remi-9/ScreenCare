@@ -1,8 +1,7 @@
 # Architecture
 
-> **Target design.** This describes the web version being built per
-> [docs/PLAN.md](docs/PLAN.md). Until Phase 1 lands, `src/` still holds the
-> legacy PySide6 desktop app. Its architecture is archived in
+> The PySide6 desktop app this replaced is at git tag `desktop-final`. Its
+> architecture is archived in
 > [docs/archive/desktop-architecture.md](docs/archive/desktop-architecture.md).
 
 ## The one idea
@@ -25,7 +24,7 @@ screencare/
   rules.py              the whole product logic: Settings, Session, apply()
   summary.py            dashboard aggregation over history records
   web.py                FastAPI routes + Jinja rendering
-  templates/            base.html, index.html, partials/*.html
+  templates/            index.html (the whole page), icons.html (SVG macro)
   styles/app.css        Tailwind source (tokens in @theme)
 public/                 served by Vercel's CDN as-is
   app.css               built from styles/app.css (committed)
@@ -48,20 +47,19 @@ re-reads the state.
 phase              idle | focusing | paused | recovery_due | breaking | idea_walk
 mode, task         classic | deep | adaptive, optional label
 started_at         when the focus block began
-focus_ends_at      deadline while focusing; null when frozen
-focus_left_s       remaining budget while frozen (paused / away / idea walk)
-active_s           focus seconds actually credited so far
-extensions_used, finish_thought_used
-idea_walk_ends_at
-hydration_due_at   / hydration_left_s   (same freeze/thaw pattern)
-eye_due_at         / eye_left_s
+planned_s, recovery_s
+focus, rest,       four Timers: {due_at} while running, {left_s} while frozen.
+hydration, eye     `rest` is the break or idea-walk countdown.
+active_s, active_since   credited focus time (+ the live stretch, if accruing)
+extensions_used, finish_thought_used, extension_s
+hydration_pending, eye_pending   reminders waiting to be folded into the break
 away_since         set while presence is away
 quiet_until
 adaptive_focus_s   current adaptive duration
 ```
 
-"Frozen" vs "running" is the only timing concept: a running timer has an
-`*_ends_at`/`*_due_at`; a frozen one has `*_left_s`. Freezing converts one to
+"Frozen" vs "running" is the only timing concept: a running timer has a
+`due_at`; a frozen one has `left_s`. Freezing converts one to
 the other, and thawing converts back. That replaces `Scheduler`, `DeadlineBudget`,
 and `Clock` from the desktop version.
 
@@ -73,9 +71,9 @@ and `Clock` from the desktop version.
 |---|---|---|
 | `start` | `mode`, `task?` | |
 | `pause` / `resume` | | |
-| `due` | | Sent when the browser sees a known deadline pass. The server re-checks against its own clock |
+| `sync` | | Sent on load and when the browser sees a known deadline pass. Every action fires due timers first, using the server's clock |
 | `extend` / `finish_thought` / `start_break` | | Only from `recovery_due`; limits enforced here |
-| `end_break` | `feedback?` | Updates `adaptive_focus_s` |
+| `end_break` / `skip_break` | `feedback?` | Feedback updates `adaptive_focus_s` |
 | `idea_walk` / `return` | `note?`, `resume` | |
 | `away` / `back` | `since` | From IdleDetector or the heartbeat gap rule |
 | `drink`, `dismiss`, `quiet` | `minutes?` | |
@@ -84,12 +82,14 @@ and `Clock` from the desktop version.
 Response: `{session, events, server_now}`. The page uses `server_now` to
 correct for clock skew when it renders countdowns.
 
-Events are plain dicts the page acts on:
+Events are plain dicts keyed by `event`:
 
-- `notify {title, body, kind}`: system notification if hidden, else toast
-- `banner {text}`: subtle in-page prompt (eye rest is always this)
-- `record {type, ...}`: append to history in `localStorage` (focus session,
-  break, hydration, idea note)
+- `{event: "notify", title, body, type}`: system notification if the page is
+  hidden, otherwise a toast
+- `{event: "banner", text, type}`: subtle in-page prompt (eye rest is always
+  this; the page sends `dismiss` after 20 s)
+- `{event: "record", type, ...}`: appended to history in `localStorage`
+  (`focus`, `break` with `kind` recovery/away/idea_walk/skipped, `drink`, `note`)
 
 Invalid transitions return `409` with a human-readable message. The UI only
 offers valid actions, so this means stale state, and the page refetches.

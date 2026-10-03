@@ -1,7 +1,6 @@
 # Development
 
-> Commands below are for the web version (Phase 1+ of
-> [docs/PLAN.md](docs/PLAN.md)). The desktop instructions are archived in
+> The desktop-era instructions are archived in
 > [docs/archive/desktop-development.md](docs/archive/desktop-development.md).
 
 ## Setup
@@ -27,7 +26,7 @@ routing for `public/`.
 ## Styles
 
 ```bash
-tailwindcss -i screencare/styles/app.css -o public/app.css --watch
+tailwindcss -i screencare/styles/app.css -o public/app.css --minify   # add --watch while editing
 ```
 
 Commit `public/app.css`: Vercel serves it as-is and runs no CSS build.

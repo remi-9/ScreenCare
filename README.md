@@ -6,9 +6,9 @@ reminders merged into one well-timed break instead of five separate nags.
 
 **Focus deeply → step away → move → hydrate → return refreshed.**
 
-> **Status: mid-overhaul.** ScreenCare is moving from a Windows desktop app
-> (PySide6) to a web app on Vercel, still written mainly in Python. See
-> [docs/PLAN.md](docs/PLAN.md). The last desktop version will be tagged
+> **Status:** the web version runs locally and is ready to deploy on Vercel
+> (`uvicorn app:app --reload` to try it). Remaining work is in
+> [docs/PLAN.md](docs/PLAN.md). The original Windows desktop app is at git tag
 > `desktop-final`.
 
 ## Docs
