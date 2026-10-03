@@ -1,44 +1,37 @@
 [project]
 name = "screencare"
-version = "0.1.0"
-description = "ScreenCare — Adaptive Focus & Wellness Companion (local-first desktop app)"
+version = "0.2.0"
+description = "ScreenCare: a calm focus and wellness companion for the browser"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.12"
 dependencies = [
-    "PySide6==6.11.2",
+    "fastapi>=0.115",
+    "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "httpx>=0.27",
     "pytest>=8.0",
-    "pytest-qt>=4.4",
+    "pytailwindcss>=0.2",
     "ruff>=0.6",
+    "uvicorn>=0.30",
 ]
-
-[project.scripts]
-screencare = "screencare.main:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["screencare"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-qt_api = "pyside6"
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
-src = ["src", "tests"]
-# ruff format also formats fenced Python code blocks inside Markdown files.
-# This repo's *.md files are documentation (including reference copies of
-# the project's fixed spec docs, which this project must not edit for a
-# linter's cosmetic preference) rather than code samples meant to satisfy
-# ruff's own style rules, so exclude Markdown from both check and format.
-extend-exclude = ["*.md"]
+target-version = "py312"
+extend-exclude = ["docs/archive"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
