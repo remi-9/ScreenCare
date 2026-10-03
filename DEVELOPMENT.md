@@ -1,132 +1,50 @@
-# Development guide
+# Development
+
+> Commands below are for the web version (Phase 1+ of
+> [docs/PLAN.md](docs/PLAN.md)). The desktop instructions are archived in
+> [docs/archive/desktop-development.md](docs/archive/desktop-development.md).
 
 ## Setup
 
-Requires Python 3.13 (`>=3.13,<3.14` — see `ScreenCare — Technical.md` §3
-for why this version is pinned rather than the newest available).
+Any Python 3.12 or newer.
 
 ```bash
 python -m venv .venv
-.venv\Scripts\Activate.ps1        # Windows PowerShell
-python -m pip install -e ".[dev]"
+.venv\Scripts\Activate.ps1          # Windows
+source .venv/bin/activate           # macOS/Linux
+pip install -e ".[dev]"
 ```
 
-This installs the app plus `pytest`, `pytest-qt`, and `ruff`.
-
-## Running the app
+## Run locally
 
 ```bash
-python -m screencare
+uvicorn app:app --reload            # http://127.0.0.1:8000
 ```
 
-This should open a small window titled "ScreenCare". If it doesn't, check
-the console output — `app/bootstrap.py` logs and returns exit code 1 when
-the root QML fails to load, rather than failing silently.
+`vercel dev` also works if you have the Vercel CLI and want production-like
+routing for `public/`.
 
-## Testing
+## Styles
 
 ```bash
-pytest
+tailwindcss -i screencare/styles/app.css -o public/app.css --watch
 ```
 
-- `tests/unit/` — pure-Python tests with no Qt dependency. These must
-  always be runnable, even in an environment without PySide6 installed.
-- `tests/ui/` — tests that touch Qt/QML. Each such module starts with
-  `pytest.importorskip("PySide6")` so the suite degrades gracefully instead
-  of erroring out where PySide6 isn't installed, but runs for real
-  wherever it is (your dev machine, CI, packaged-build smoke tests).
-- `tests/conftest.py` forces `QT_QPA_PLATFORM=offscreen` so UI tests never
-  need a visible display or window focus to pass.
+Commit `public/app.css`: Vercel serves it as-is and runs no CSS build.
 
-All engine/scheduler tests drive time via the injectable `FakeClock`
-(`screencare.scheduler.clock`) rather than real `sleep()` calls — see
-`ScreenCare — Implementation Standards.md` §36. The pattern:
-
-```python
-clock = FakeClock()
-scheduler = Scheduler(clock)
-engine = FocusEngine(clock, scheduler)
-engine.start(plan)
-clock.advance(minutes=25)   # instantaneous — no real waiting
-scheduler.tick()            # fires any deadlines that are now due
-```
-
-New time-dependent code should follow the same shape rather than adding a
-real timer or `time.sleep` anywhere in a test.
-
-## Linting and formatting
+## Checks
 
 ```bash
-ruff check .
-ruff format --check .
+pytest                              # < 1 s, no browser needed
+ruff check --fix . && ruff format .
 ```
 
-Fix reported issues rather than suppressing them. Formatting itself is not
-subjective here — run `ruff format .` to apply it rather than
-hand-formatting to match.
+That's the whole definition of done, plus "the Vercel preview loads and a
+focus session starts". Rules tests pass `now=` explicitly, so never sleep in a
+test.
 
-## Building a standalone Windows executable
+## Deploy
 
-```powershell
-pip install nuitka   # or let the build script do it
-.\packaging\build_windows.ps1
-```
-
-That wraps `pyside6-deploy -c pysidedeploy.spec`, which itself wraps
-Nuitka (`ScreenCare — Technical.md`'s "Final Recommended Stack": "
-`pyside6-deploy` and Nuitka"). Requires a working dev install (`pip
-install -e ".[dev]"`) with PySide6 present, plus Nuitka's own build
-prerequisites (a C compiler — on Windows, either MSVC via the Visual
-Studio Build Tools, or MinGW64, which Nuitka can offer to download on
-first run). The build takes several minutes; output lands under `.\dist\`
-as a folder (`mode = standalone` in `pysidedeploy.spec` — deliberately not
-the tool's default `onefile`, which self-extracts to a temp directory on
-every launch; see the comment in that file for why that matters for an
-always-running, launch-at-login background app).
-
-**This can only be built and verified on a real Windows machine** —
-Nuitka needs a native C toolchain and PySide6, neither available in the
-cloud sandbox this project has otherwise been developed in. After
-building, run this smoke-test checklist by hand (`Technical.md` §40's
-"platform tests... run a small number of real native integration tests"
-and §47's acceptance criteria, applied to the packaged build specifically
-rather than just the dev environment):
-
-1. Launch `dist\ScreenCare.dist\ScreenCare.exe` directly (not via `python
-   -m screencare`) — no console window should appear, and the tray icon
-   should show up within a couple of seconds.
-2. Start a focus session, then close the main window — it should
-   minimize to the tray rather than quitting (Phase 4).
-3. Lock the session, wait, and unlock it; sleep and wake the machine
-   during a focus session — neither should be counted as focus time
-   (Phase 5).
-4. Check Task Manager while the window is hidden in the tray for a
-   few minutes: CPU usage should be negligible and memory stable, not
-   climbing (`Technical.md` §47's "Tray mode" acceptance scenario).
-5. Quit from the tray menu, then relaunch — history and settings from
-   step 2 should still be there (SQLite database persisted under
-   `%LOCALAPPDATA%`).
-6. Toggle "launch at login" in Settings and confirm the entry actually
-   appears/disappears in Windows' Startup Apps (Phase 5's autostart).
-
-Note that none of this — the spec file, the icon, the build script — has
-actually been run in this project yet; it's built and reasoned through
-carefully against current `pyside6-deploy`/Nuitka documentation, but only
-the user's machine can confirm it produces a working executable.
-
-## Workflow for new milestones
-
-Before writing significant code for the next milestone:
-
-1. Re-read the relevant section(s) of the three project docs.
-2. Check what already exists in the repo — don't duplicate an existing
-   abstraction.
-3. State the smallest coherent slice and which files it touches.
-4. Implement it.
-5. Run `pytest` and `ruff check . && ruff format --check .`; fix failures
-   rather than bypassing them.
-6. Confirm `python -m screencare` still starts.
-7. Leave the repository in a runnable state before moving on.
-
-This mirrors `ScreenCare — Implementation Standards.md` §56 and §50
-("Definition of Done").
+Push a branch to get a preview URL from Vercel; merge to `main` to deploy
+production. There's no build configuration: Vercel detects the FastAPI `app`
+in `app.py` and serves `public/` from its CDN.

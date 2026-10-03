@@ -34,3 +34,7 @@ dist/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Vercel / local env
+.vercel/
+.env*
