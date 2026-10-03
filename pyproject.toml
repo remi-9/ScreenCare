@@ -1,6 +1,6 @@
 [project]
 name = "screencare"
-version = "0.2.0"
+version = "1.0.0"
 description = "ScreenCare: a calm focus and wellness companion for the browser"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -24,6 +24,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["screencare"]
+
+[tool.setuptools.package-data]
+screencare = ["templates/*.html", "styles/*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

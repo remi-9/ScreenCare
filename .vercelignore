@@ -4,3 +4,4 @@ venv/
 .venv/
 *.md
 !README.md
+dev.py

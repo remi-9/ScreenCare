@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
@@ -17,7 +15,6 @@ from screencare import rules
 from screencare.summary import dashboard
 
 ROOT = Path(__file__).resolve().parent
-PUBLIC = ROOT.parent / "public"
 
 app = FastAPI(title="ScreenCare", docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=ROOT / "templates")
@@ -59,7 +56,7 @@ def act(body: ActRequest) -> dict[str, Any]:
         session, events = rules.apply(body.session, body.settings, body.action, body.payload, now)
     except rules.InvalidAction as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except ValueError as exc:  # a malformed payload value (mode, timestamp, ...)
+    except (ValueError, TypeError) as exc:  # a malformed payload value (mode, timestamp, ...)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"session": session, "events": events, "server_now": now}
 
@@ -72,9 +69,3 @@ def summary(body: SummaryRequest) -> dict[str, Any]:
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-# On Vercel, public/ is served by the CDN. Locally, serve it ourselves; mounted
-# last so the routes above take priority.
-if not os.environ.get("VERCEL") and PUBLIC.is_dir():
-    app.mount("/", StaticFiles(directory=PUBLIC), name="public")

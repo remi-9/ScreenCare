@@ -67,8 +67,20 @@ document.addEventListener("alpine:init", () => {
 
       // -- talking to the rules ------------------------------------------------
 
-      async act(action, payload = {}) {
-        if (this.busy && action === "sync") return;
+      // Actions run one at a time, so each starts from the session the previous
+      // one returned. A sync is skipped if anything is already queued.
+      queue: Promise.resolve(),
+      pending: 0,
+
+      act(action, payload = {}) {
+        if (action === "sync" && this.pending) return Promise.resolve(false);
+        this.pending++;
+        const run = this.queue.then(() => this.send(action, payload));
+        this.queue = run.finally(() => this.pending--);
+        return run;
+      },
+
+      async send(action, payload) {
         this.busy = true;
         try {
           const res = await fetch("/api/act", {
@@ -357,12 +369,17 @@ document.addEventListener("alpine:init", () => {
           const res = await fetch("/api/summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ records: this.history, tz_offset_minutes: -new Date().getTimezoneOffset() }),
+            body: JSON.stringify({ records: this.recentHistory(8), tz_offset_minutes: -new Date().getTimezoneOffset() }),
           });
           if (res.ok) this.summary = await res.json();
         } catch {
           this.toast("Couldn't load the dashboard while offline.");
         }
+      },
+
+      recentHistory(days) {
+        const cutoff = Date.now() - days * 86_400_000;
+        return this.history.filter((r) => Date.parse(r.ended_at || r.at) >= cutoff);
       },
 
       get tiles() {

@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app import app
+from dev import app
 
 client = TestClient(app)
 
@@ -30,6 +30,11 @@ def test_invalid_transition_is_409():
 
 def test_bad_payload_is_422():
     response = client.post("/api/act", json={"action": "start", "payload": {"mode": "turbo"}})
+    assert response.status_code == 422
+
+
+def test_wrong_payload_type_is_422():
+    response = client.post("/api/act", json={"action": "quiet", "payload": {"minutes": None}})
     assert response.status_code == 422
 
 

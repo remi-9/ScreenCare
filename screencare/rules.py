@@ -10,7 +10,7 @@ reload, a sleeping laptop, or a closed tab never loses or double-counts time.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -501,6 +501,8 @@ def _since(ctx: _Ctx) -> datetime:
     if raw is None:
         return ctx.now
     since = raw if isinstance(raw, datetime) else datetime.fromisoformat(raw)
+    if since.tzinfo is None:
+        since = since.replace(tzinfo=UTC)
     return min(since, ctx.now)
 
 

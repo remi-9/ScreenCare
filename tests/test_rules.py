@@ -81,6 +81,14 @@ def test_sleeping_mid_session_is_not_counted_as_focus():
     assert away["seconds"] == 30 * 60
 
 
+def test_timestamp_without_timezone_is_treated_as_utc():
+    sim = Sim()
+    sim.do("start", mode="classic")
+    sim.wait(minutes=5)
+    sim.do("away", since=sim.now.replace(tzinfo=None).isoformat())
+    assert sim.session.away_since == sim.now
+
+
 def test_short_absence_is_not_a_break():
     sim = Sim()
     sim.do("start", mode="classic")
