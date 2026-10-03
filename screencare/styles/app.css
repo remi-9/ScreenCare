@@ -170,6 +170,11 @@
   animation: breath 10s infinite paused;
   transition: --breath-amp 3s cubic-bezier(0.37, 0, 0.63, 1);
 }
+/* Calm: a gentle pulse while ready or focusing. Full: during breaks. */
+.breath.is-calm {
+  --breath-amp: 0.6;
+  animation-play-state: running;
+}
 .breath.is-breathing {
   --breath-amp: 1;
   animation-play-state: running;
@@ -183,7 +188,7 @@
   opacity: calc(0.4 * var(--breath) * var(--breath-amp));
 }
 .breath-ring {
-  scale: calc(1 + 0.025 * var(--breath) * var(--breath-amp));
+  scale: calc(1 + 0.045 * var(--breath) * var(--breath-amp));
 }
 /* Full shorthands: a name-less `animation` shorthand gets minified to `none`. */
 .breath-cue > * {
@@ -198,6 +203,8 @@
 .breath-cue > .cue-still {
   display: none;
 }
+/* Run whenever the breath runs, so the cue is in step once a break starts. */
+.is-calm .breath-cue > *,
 .is-breathing .breath-cue > * {
   animation-play-state: running;
 }

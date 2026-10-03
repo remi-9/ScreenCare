@@ -49,8 +49,8 @@ so the accessibility checklist below applies to every component.
 - **Soft glass cards**: subtle translucency and blur, generous radius
   (`rounded-3xl`), hairline borders instead of heavy shadows.
 - **Signature element: the ring.** A large SVG progress ring around the
-  timer. While focusing it fills smoothly. During a break the whole ring
-  *breathes*: glow, an outer halo, and the ring itself all move from one
+  timer. It always breathes gently (60% strength) while ready or focusing,
+  stays still when paused, and breathes fully during a break: glow, an outer halo, and the ring itself all move from one
   `--breath` value on a sine curve (4 s in, 6 s out), with a "Breathe in… /
   …and out" cue in step. The motion's strength fades in and out over 3 s,
   so a break starts and ends without any jump. Outside breaks the animation is

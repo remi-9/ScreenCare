@@ -94,7 +94,7 @@
     <section x-show="view === 'focus'" class="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
 
       {# The ring #}
-      <div class="breath relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center" :class="breathing && 'is-breathing'">
+      <div class="breath relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center" :class="breathing ? 'is-breathing' : calmBreath && 'is-calm'">
         <div aria-hidden="true" class="breath-glow absolute inset-10 rounded-full blur-3xl transition-colors duration-1000" style="background: var(--accent)"></div>
         <div aria-hidden="true" class="breath-halo absolute inset-1 rounded-full border transition-colors duration-1000" style="border-color: var(--accent)"></div>
         <svg viewBox="0 0 240 240" class="breath-ring absolute inset-0 -rotate-90" role="progressbar"

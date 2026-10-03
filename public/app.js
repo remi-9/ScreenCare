@@ -304,6 +304,11 @@ document.addEventListener("alpine:init", () => {
         this.save();
       },
 
+      // A gentle pulse keeps the ring alive while ready or focusing; paused stays still.
+      get calmBreath() {
+        return ["idle", "focusing", "recovery_due"].includes(this.session.phase);
+      },
+
       get breathing() {
         return this.session.phase === "breaking" || this.session.phase === "idea_walk";
       },
