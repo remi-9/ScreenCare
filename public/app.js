@@ -29,6 +29,17 @@ const PALETTE = {
 };
 const HEX = /^#[0-9a-f]{6}$/i;
 
+// On-screen copy comes from screencare/messages.py. A variant is chosen by
+// hashing a seed that stays fixed for the whole phase, so text never changes
+// mid-phase but each new block or break can read differently.
+const COPY = window.SCREENCARE.copy;
+const hash = (text) => {
+  let h = 2166136261;
+  for (const ch of text) h = Math.imul(h ^ ch.codePointAt(0), 16777619);
+  return h >>> 0;
+};
+const variant = (key, seed) => COPY[key][hash(`${key}|${seed}`) % COPY[key].length];
+
 // Black or white, whichever reads better on `hex` (WCAG relative luminance).
 const inkFor = (hex) => {
   const lin = (i) => {
@@ -86,6 +97,7 @@ document.addEventListener("alpine:init", () => {
       toasts: [],
       summary: null,
       settingsOpen: false,
+      colorsOpen: false,
       feedbackFor: null,
       picked: {},
       notifyPerm: "Notification" in window ? Notification.permission : "unsupported",
@@ -314,11 +326,25 @@ document.addEventListener("alpine:init", () => {
         return "";
       },
 
-      get recoveryCopy() {
-        const used = this.session.extensions_used;
-        if (used >= window.SCREENCARE.maxExtensions) return "You've stretched this block as far as it goes. Your eyes and back will thank you.";
-        if (used > 0) return "Still going? That's fine once. Remember that a short walk often unlocks the next step.";
-        return "Leave the screen for a few minutes. Walk, get some water, look at something far away.";
+      get screenCopy() {
+        const s = this.session;
+        switch (s.phase) {
+          case "idle":
+            return variant("idle", this.history.length);
+          case "focusing":
+            return variant(this.overtime ? "overtime" : "focusing", s.started_at);
+          case "paused":
+            return variant("paused", s.started_at);
+          case "recovery_due": {
+            const key = this.extensionsLeft === 0 ? "postponed_max" : this.postponed ? "postponed" : "recovery";
+            return variant(key, `${s.started_at}|${s.extensions_used}|${s.finish_thought_used}`);
+          }
+          case "breaking":
+          case "idea_walk":
+            return variant(s.phase, s.break_started_at);
+          default:
+            return ["", ""];
+        }
       },
 
       get extensionsLeft() {
@@ -369,7 +395,7 @@ document.addEventListener("alpine:init", () => {
       },
 
       drink() {
-        this.act("drink").then((ok) => ok && this.toast("💧 Nice. Logged a drink."));
+        this.act("drink").then((ok) => ok && this.toast(variant("drink", Date.now())));
       },
 
       toggleQuiet() {

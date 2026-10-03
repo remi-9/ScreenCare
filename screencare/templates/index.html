@@ -1,4 +1,5 @@
 {% from "icons.html" import icon %}
+{% from "colors.html" import color_pickers %}
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
@@ -21,7 +22,7 @@
       document.documentElement.dataset.theme = dark ? "dark" : "light";
     } catch {}
   </script>
-  <script>window.SCREENCARE = {{ {"defaults": defaults, "maxExtensions": max_extensions} | tojson }};</script>
+  <script>window.SCREENCARE = {{ {"defaults": defaults, "maxExtensions": max_extensions, "copy": copy} | tojson }};</script>
   <script defer src="/app.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.9/dist/cdn.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
@@ -43,10 +44,10 @@
         <span class="absolute inset-0 rounded-full opacity-40" style="background: var(--accent)"></span>
         <span class="size-3.5 rounded-full" style="background: var(--accent)"></span>
       </span>
-      <span class="font-display text-xl tracking-tight">ScreenCare</span>
+      <span class="font-display text-xl tracking-tight max-[420px]:sr-only">ScreenCare</span>
     </a>
 
-    <nav aria-label="Primary" class="flex items-center gap-1">
+    <nav aria-label="Primary" class="relative flex items-center gap-1">
       <div role="tablist" aria-label="View" class="mr-1 hidden rounded-full border border-stone-900/10 p-1 sm:flex dark:border-white/10">
         <button role="tab" :aria-selected="view === 'focus'" @click="view = 'focus'"
                 class="rounded-full px-4 py-1.5 text-sm transition" :class="view === 'focus' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'">Focus</button>
@@ -62,6 +63,17 @@
       <button class="icon-btn" @click="toggleQuiet()" :aria-pressed="isQuiet"
               :aria-label="isQuiet ? 'Resume reminders' : 'Pause reminders for ' + settings.quiet_minutes + ' minutes'"
               :class="isQuiet && 'text-(--accent)!'">{{ icon("moon") }}</button>
+      <button class="icon-btn" @click="colorsOpen = !colorsOpen" aria-label="Colors" title="Colors"
+              aria-haspopup="dialog" :aria-expanded="colorsOpen" aria-controls="colors-popover"
+              :class="colorsOpen && 'bg-stone-900/5 text-stone-900 dark:bg-white/10 dark:text-white'">{{ icon("palette") }}</button>
+      <div id="colors-popover" x-show="colorsOpen" x-cloak role="dialog" aria-label="Colors"
+           x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 -translate-y-1"
+           x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 -translate-y-1"
+           @click.outside="colorsOpen = false" @keydown.escape.window="colorsOpen = false"
+           class="card absolute top-full right-0 z-40 mt-2 w-[min(20.5rem,calc(100vw-2rem))] rounded-3xl! bg-stone-50/95! p-5 dark:bg-stone-900/95!">
+        <p class="eyebrow">Colors</p>
+        {{ color_pickers() }}
+      </div>
       <button class="icon-btn" @click="settingsOpen = true" aria-label="Settings" aria-haspopup="dialog">{{ icon("sliders") }}</button>
     </nav>
   </header>
@@ -113,8 +125,8 @@
 
         {# Idle: choose a mode #}
         <div x-show="session.phase === 'idle'" class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Ready for a focus block?</h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400">Focus deeply, then step away. Reminders are folded into your breaks.</p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]">Ready for a focus block?</h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]">Focus deeply, then step away. Reminders are folded into your breaks.</p>
 
           <fieldset class="mt-6">
             <legend class="eyebrow mb-3">Mode</legend>
@@ -141,8 +153,8 @@
 
         {# Focusing / paused #}
         <div x-show="session.phase === 'focusing' || session.phase === 'paused'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight" x-text="session.phase === 'paused' ? 'Paused.' : (overtime ? 'A little extra time.' : 'In the zone.')"></h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="session.phase === 'paused' ? 'Take your time. The clock is holding.' : 'Nothing to manage. ScreenCare will tell you when it\'s time to step away.'"></p>
+          <h1 class="font-display text-3xl tracking-tight" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <div class="mt-6 flex flex-wrap gap-2">
             <button x-show="session.phase === 'focusing'" class="btn-ghost" @click="act('pause')">{{ icon("pause", "size-4") }} Pause</button>
             <button x-show="session.phase === 'paused'" class="btn-primary" @click="act('resume')">{{ icon("play", "size-4") }} Resume</button>
@@ -155,8 +167,8 @@
 
         {# Recovery due: flow protection #}
         <div x-show="session.phase === 'recovery_due'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="postponed ? 'Your break is waiting.' : 'Focus complete. Time for a reset.'"></h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="recoveryCopy"></p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <div class="mt-6 flex flex-wrap gap-2">
             <button class="btn-primary" @click="act('start_break')">{{ icon("walk", "size-4") }} Start break</button>
             <button class="btn-ghost" @click="act('finish_thought')" :disabled="session.finish_thought_used">Finish this thought</button>
@@ -169,8 +181,8 @@
 
         {# Break #}
         <div x-show="session.phase === 'breaking'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Step away for a bit.</h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400">A few ideas, only if they feel good:</p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <div class="mt-5 flex flex-wrap gap-2">
             <template x-for="c in suggestions" :key="c.id">
               <button class="chip" :aria-pressed="!!picked[c.id]" @click="picked[c.id] = !picked[c.id]">
@@ -183,8 +195,8 @@
 
         {# Idea walk #}
         <div x-show="session.phase === 'idea_walk'" x-cloak class="animate-rise">
-          <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Take a 5-minute Idea Walk.</h1>
-          <p class="mt-2 text-stone-600 dark:text-stone-400">Step away from the screen and walk around. Don't force a solution. Give yourself space for possibilities.</p>
+          <h1 class="font-display text-3xl tracking-tight sm:text-4xl" x-text="screenCopy[0]"></h1>
+          <p class="mt-2 text-stone-600 dark:text-stone-400" x-text="screenCopy[1]"></p>
           <label for="note" class="eyebrow mt-6 mb-3 block">Anything come to mind?</label>
           <textarea id="note" x-model="note" rows="3" maxlength="2000" class="field resize-none" placeholder="Jot it down before it slips away…"></textarea>
           <div class="mt-4 flex flex-wrap gap-2">
@@ -369,26 +381,7 @@
             </template>
           </div>
 
-          <template x-for="kind in ['focus', 'recover']" :key="kind">
-            <fieldset class="mt-5">
-              <legend class="mb-2 text-sm" x-text="kind === 'focus' ? 'Focus color' : 'Break color'"></legend>
-              <div class="flex flex-wrap items-center gap-2.5">
-                <template x-for="c in PALETTE[kind]" :key="c.hex">
-                  <button class="swatch" :style="{ background: c.hex }" :aria-pressed="prefs.colors[kind] === c.hex"
-                          :aria-label="c.name" :title="c.name" @click="setColor(kind, c.hex)"></button>
-                </template>
-                <label class="swatch grid place-items-center has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2"
-                       :data-selected="isCustomColor(kind)" :title="'Custom ' + (kind === 'focus' ? 'focus' : 'break') + ' color'"
-                       :style="isCustomColor(kind) ? { background: prefs.colors[kind] } : { background: 'conic-gradient(from 90deg, #f87171, #fbbf24, #4ade80, #38bdf8, #a78bfa, #f472b6, #f87171)' }">
-                  <input type="color" class="sr-only" :value="prefs.colors[kind]" @input="setColor(kind, $event.target.value)"
-                         :aria-label="'Custom ' + (kind === 'focus' ? 'focus' : 'break') + ' color'">
-                  <span x-show="!isCustomColor(kind)" class="size-3.5 rounded-full bg-white/90 shadow" aria-hidden="true"></span>
-                </label>
-              </div>
-            </fieldset>
-          </template>
-          <button class="mt-3 text-sm text-stone-600 underline-offset-4 hover:underline dark:text-stone-400" @click="resetColors()"
-                  x-show="!isDefaultColors">Reset colors</button>
+          {{ color_pickers() }}
         </section>
 
         <section>
