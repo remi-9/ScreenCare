@@ -56,12 +56,18 @@ so the accessibility checklist below applies to every component.
   so a break starts and ends without any jump. Outside breaks the animation is
   paused, and under reduced motion the ring stays still with a static
   "Breathe slowly" cue.
-- **Your colors.** Settings → Appearance has a *Focus color* and a *Break
+- **Your colors.** The palette button in the header (next to water and quiet
+  mode) opens a quick color popover, and Settings → Appearance has a *Focus color* and a *Break
   color*: five curated swatches each, plus a custom color picker. Button text
   switches between near-black and white automatically, whichever contrasts
   better. The amber "postponed" color stays fixed, because it means
   "overdue".
-- **Copy is kind and short.** "Time for a reset." "Anything come to mind?"
+- **Copy is kind and short.** "Time for a reset." "Anything come to mind?" Every message has a few
+  variations, all in `screencare/messages.py`. Server messages (notifications,
+  banners) are picked per moment. On-screen headlines are picked once per
+  phase, keyed to when the phase started, so they never change mid-phase but
+  each block reads a little differently. Buttons never vary, because
+  predictable controls matter more than variety.
   No exclamation marks, no guilt, no streaks.
 
 ### Design tokens (`styles/app.css`, `@theme`)
