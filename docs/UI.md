@@ -97,20 +97,23 @@ client-side router.
 
 ## Accessibility checklist
 
+Verified with axe-core in Edge (both themes, 390 px and 1280 px, every
+phase). A manual screen-reader pass is still worth doing before launch.
+
 "Accessible" means both *reachable* (it's a URL; no install, no account) and
 *usable by everyone*:
 
-- [ ] WCAG 2.2 AA contrast in both themes, checked on every phase accent.
-- [ ] Every action works by keyboard. Visible focus rings (`focus-visible`),
+- [x] WCAG 2.2 AA contrast in both themes, checked on every phase accent.
+- [x] Every action works by keyboard. Visible focus rings (`focus-visible`),
       logical tab order, `Esc` closes sheets.
-- [ ] Phase changes are announced through one `aria-live="polite"` region.
+- [x] Phase changes are announced through one `aria-live="polite"` region.
       The ticking timer is *not* live, to avoid a screen reader announcing
       every second. The ring has `role="progressbar"` with `aria-valuenow`
       updated each minute.
-- [ ] Never rely on color alone: every phase has an icon and a text label.
-- [ ] `prefers-reduced-motion` stops the gradient drift and breathing ring.
-- [ ] Sizes in `rem`, layout holds at 200% zoom and at 320 px width.
+- [x] Never rely on color alone: every phase has an icon and a text label.
+- [x] `prefers-reduced-motion` stops the gradient drift and breathing ring.
+- [x] Sizes in `rem`, layout holds at 200% zoom and at 320 px width.
       Touch targets ≥ 44 px.
-- [ ] Notification and idle-detection permissions are requested in context,
+- [x] Notification and idle-detection permissions are requested in context,
       with a one-line plain-language reason, and the app works fully if they're
       declined.

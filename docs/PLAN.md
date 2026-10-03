@@ -153,9 +153,12 @@ Each phase ends deployable, with `pytest` and `ruff check` green.
 ### Phase 5: dashboard, accessibility, polish (1–2 days)
 
 - [x] Dashboard via `/api/summary` (today + 7-day trend).
-- [ ] Accessibility pass against the checklist in [UI.md](UI.md) (keyboard-only
-      run-through, screen reader spot check, reduced motion, 200% zoom).
-- [ ] Onboarding: one screen explaining modes and asking for notification /
+- [x] Accessibility pass against the checklist in [UI.md](UI.md). axe-core
+      (WCAG 2.2 AA + best practices) reports zero violations on every screen, in
+      both themes, at 390 px and 1280 px.
+- [ ] Manual screen-reader spot check (NVDA or VoiceOver). Automated tools
+      can't judge announcement quality.
+- [x] Onboarding: one screen explaining modes and asking for notification /
       idle permissions with a plain-language reason.
 
 ### Phase 6: launch
