@@ -11,6 +11,9 @@ source .venv/bin/activate           # macOS/Linux
 pip install -e ".[dev]"
 ```
 
+If Windows says scripts are disabled, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once (see the README).
+
 ## Run locally
 
 ```bash

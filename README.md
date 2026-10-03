@@ -24,7 +24,7 @@ cd ScreenCare
 python -m venv .venv
 
 # 3. Activate it
-.venv\Scripts\Activate.ps1          # Windows (PowerShell)
+.venv\Scripts\Activate.ps1          # Windows (PowerShell). See the note below if it's blocked
 source .venv/bin/activate           # macOS / Linux
 
 # 4. Install ScreenCare plus the dev tools
@@ -37,9 +37,20 @@ uvicorn app:app --reload
 Open **http://127.0.0.1:8000** and start a focus block. `--reload` restarts
 the server when you edit Python files.
 
-If PowerShell refuses to run `Activate.ps1`, run
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or use
-`.venv\Scripts\activate.bat` from `cmd`.
+> **Windows: "running scripts is disabled on this system"?** PowerShell's
+> default execution policy (*Restricted*) blocks every `.ps1` script,
+> including the venv's `Activate.ps1`. Allow local scripts for your user, once
+> (no admin needed):
+>
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+> ```
+>
+> `RemoteSigned` still requires downloaded scripts to be signed. If you'd
+> rather not change it, skip activation and call the venv directly:
+> `.venv\Scripts\python -m pip install -e ".[dev]"`, then
+> `.venv\Scripts\python -m uvicorn app:app --reload`. Or use
+> `.venv\Scripts\activate.bat` from `cmd`.
 
 ### Optional
 
