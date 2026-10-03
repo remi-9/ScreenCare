@@ -48,14 +48,14 @@ so the accessibility checklist below applies to every component.
   phase's hue over a few seconds. Static under `prefers-reduced-motion`.
 - **Soft glass cards**: subtle translucency and blur, generous radius
   (`rounded-3xl`), hairline borders instead of heavy shadows.
-- **Signature element: the ring.** A large SVG progress ring around the
-  timer. It always breathes gently (60% strength) while ready or focusing,
-  stays still when paused, and breathes fully during a break: glow, an outer halo, and the ring itself all move from one
-  `--breath` value on a sine curve (4 s in, 6 s out), with a "Breathe in… /
-  …and out" cue in step. The motion's strength fades in and out over 3 s,
-  so a break starts and ends without any jump. Outside breaks the animation is
-  paused, and under reduced motion the ring stays still with a static
-  "Breathe slowly" cue.
+- **Signature element: the breathing ring.** Layers driven by one breath
+  (4 s in, 6 s out): a solid "lung" ring (white in dark theme, the accent in
+  light) that swells past the progress ring, ripples released at the top of
+  each breath, two slowly morphing color shapes, three orbiting points of
+  light, and a "Breathe in… / …and out" cue. The page background breathes
+  too: the phase-colored light swells while a warm light opposite moves
+  against it. Gentle (60%) while ready or focusing, full during breaks, still
+  when paused, and fully still under reduced motion.
 - **Your colors.** The palette button in the header (next to water and quiet
   mode) opens a quick color popover, and Settings → Appearance has a *Focus color* and a *Break
   color*: five curated swatches each, plus a custom color picker. Button text

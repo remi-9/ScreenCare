@@ -29,11 +29,13 @@
 </head>
 <body x-data="screencare" :style="themeVars" class="relative overflow-x-hidden">
 
-  {# Ambient light: slowly drifts toward the current phase's hue. #}
+  <div class="breath-root" :class="breathing ? 'is-breathing' : calmBreath && 'is-calm'">
+
+  {# Ambient light: drifts toward the current phase's hue and breathes with the ring. #}
   <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-    <div class="absolute -top-1/3 left-1/2 size-[70rem] -translate-x-1/2 rounded-full opacity-25 blur-3xl transition-[background] duration-[3000ms] animate-drift dark:opacity-30"
+    <div class="breath-bg absolute -top-1/3 left-1/2 size-[70rem] -translate-x-1/2 rounded-full blur-3xl transition-[background] duration-[3000ms] animate-drift"
          style="background: radial-gradient(closest-side, var(--accent), transparent)"></div>
-    <div class="absolute -bottom-1/2 -left-1/4 size-[50rem] rounded-full bg-amber-200/30 blur-3xl dark:bg-stone-700/20"></div>
+    <div class="breath-bg-counter absolute -bottom-1/2 -left-1/4 size-[50rem] rounded-full bg-amber-200/30 blur-3xl dark:bg-stone-700/25"></div>
   </div>
 
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 btn-ghost">Skip to content</a>
@@ -94,9 +96,18 @@
     <section x-show="view === 'focus'" class="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
 
       {# The ring #}
-      <div class="breath relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center" :class="breathing ? 'is-breathing' : calmBreath && 'is-calm'">
+      <div class="relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center">
         <div aria-hidden="true" class="breath-glow absolute inset-10 rounded-full blur-3xl transition-colors duration-1000" style="background: var(--accent)"></div>
-        <div aria-hidden="true" class="breath-halo absolute inset-1 rounded-full border transition-colors duration-1000" style="border-color: var(--accent)"></div>
+        <div aria-hidden="true" class="breath-blob absolute inset-[20%] blur-2xl" style="background: var(--accent)"></div>
+        <div aria-hidden="true" class="breath-blob is-second absolute inset-[26%] blur-2xl" style="background: color-mix(in oklab, var(--accent), white 35%)"></div>
+        <div aria-hidden="true" class="breath-ripple absolute inset-[7%] rounded-full border-2"></div>
+        <div aria-hidden="true" class="breath-ripple is-second absolute inset-[7%] rounded-full border"></div>
+        <div aria-hidden="true" class="breath-lung absolute inset-[7%] rounded-full border-[3px]"></div>
+        <div aria-hidden="true" class="breath-orbit absolute inset-[7%]">
+          <div class="absolute inset-0"><span class="absolute top-0 left-1/2 size-2 -translate-1/2 rounded-full"></span></div>
+          <div class="absolute inset-0 rotate-[130deg]"><span class="absolute top-0 left-1/2 size-1.5 -translate-1/2 rounded-full"></span></div>
+          <div class="absolute inset-0 rotate-[245deg]"><span class="absolute top-0 left-1/2 size-1 -translate-1/2 rounded-full"></span></div>
+        </div>
         <svg viewBox="0 0 240 240" class="breath-ring absolute inset-0 -rotate-90" role="progressbar"
              aria-label="Progress of the current phase" aria-valuemin="0" aria-valuemax="100"
              :aria-valuenow="Math.round(progress * 100)" :aria-valuetext="ariaClock">
@@ -105,13 +116,12 @@
                   stroke="var(--accent)" :stroke-dasharray="RING" :stroke-dashoffset="RING * (1 - progress)"
                   class="transition-[stroke-dashoffset,stroke] duration-1000 ease-linear"/>
         </svg>
-        <div class="relative text-center">
-          <p class="eyebrow" x-text="phaseLabel"></p>
+        <div class="breath-text relative text-center">
+          <p class="eyebrow dark:text-stone-300!" x-text="phaseLabel"></p>
           <p class="mt-2 font-display text-6xl tabular-nums sm:text-7xl" x-text="clock" aria-hidden="true"></p>
           <div class="mt-2 grid justify-items-center text-sm">
             <p class="col-start-1 row-start-1 max-w-[14rem] truncate text-stone-600 transition-opacity duration-700 dark:text-stone-400"
                :class="breathing && 'opacity-0'" x-text="session.task || subline"></p>
-            {# Always rendered (never display:none) so its animation stays in step with the breath. #}
             <p class="breath-cue col-start-1 row-start-1 grid text-stone-600 transition-opacity duration-700 dark:text-stone-300"
                :class="!breathing && 'opacity-0'" aria-hidden="true">
               <span class="cue-in">Breathe in…</span><span class="cue-out">…and out</span><span class="cue-still">Breathe slowly</span>
@@ -251,6 +261,7 @@
       <p x-show="!summary" class="mt-8 text-stone-600 dark:text-stone-400">Loading…</p>
     </section>
   </main>
+  </div>{# .breath-root #}
 
   {# ───────────────────────── Onboarding (first visit) ───────────────────────── #}
   <div x-show="!prefs.onboarded" x-cloak data-onboarding class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-stone-950/50 p-4 backdrop-blur-md">

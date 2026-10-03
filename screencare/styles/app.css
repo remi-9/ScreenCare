@@ -112,10 +112,14 @@
 }
 
 /* ── Breathing ──────────────────────────────────────────────────────────────
-   One registered number, --breath, glides 0 → 1 → 0 on a sine curve (4 s in,
-   6 s out). Every breathing layer is driven from it, scaled by --breath-amp,
-   which fades in and out over 3 s. Starting or ending a break therefore never
-   jumps, and the animation is paused (costing nothing) the rest of the time. */
+   One element, .breath-root (wraps the backdrop and the page), animates a few
+   registered numbers on a 10 s cycle: 4 s in, 6 s out.
+     --breath   0 → 1 → 0 on a sine curve: size and brightness of every layer
+     --inhale   1 while breathing in, 0 while breathing out: drives the cue text
+     --ripple   0 → 1 once per exhale: a ring released at the top of the breath
+   Every layer reads these, scaled by --breath-amp (0 still, 0.6 calm, 1 full),
+   which blends over 3 s. Because only .breath-root animates, layers can never
+   drift out of step, even after the focus view is hidden and shown again. */
 @property --breath {
   syntax: "<number>";
   inherits: true;
@@ -125,6 +129,21 @@
   syntax: "<number>";
   inherits: true;
   initial-value: 0;
+}
+@property --inhale {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --ripple {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --ripple-2 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
 }
 @keyframes breath {
   0% {
@@ -139,74 +158,162 @@
     --breath: 0;
   }
 }
-@keyframes cue-in {
+@keyframes breath-cue {
   0%,
   34% {
-    opacity: 1;
+    --inhale: 1;
   }
   44%,
   92% {
-    opacity: 0;
+    --inhale: 0;
   }
   100% {
-    opacity: 1;
+    --inhale: 1;
   }
 }
-@keyframes cue-out {
+@keyframes breath-ripple {
+  0% {
+    --ripple: 1;
+    --ripple-2: 1;
+  }
+  39.9% {
+    --ripple: 1;
+  }
+  40% {
+    --ripple: 0;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  51.9% {
+    --ripple-2: 1;
+  }
+  52% {
+    --ripple-2: 0;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  100% {
+    --ripple: 1;
+    --ripple-2: 1;
+  }
+}
+@keyframes blob-morph {
   0%,
-  34% {
-    opacity: 0;
-  }
-  44%,
-  92% {
-    opacity: 1;
-  }
   100% {
-    opacity: 0;
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  }
+  33% {
+    border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+  }
+  66% {
+    border-radius: 38% 62% 41% 59% / 62% 38% 62% 38%;
   }
 }
-.breath {
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.breath-root {
   --breath-amp: 0;
-  animation: breath 10s infinite paused;
+  --lung: var(--accent); /* solid, never transparent; white in dark theme */
+  animation:
+    breath 10s infinite paused,
+    breath-cue 10s linear infinite paused,
+    breath-ripple 10s linear infinite paused;
   transition: --breath-amp 3s cubic-bezier(0.37, 0, 0.63, 1);
 }
-/* Calm: a gentle pulse while ready or focusing. Full: during breaks. */
-.breath.is-calm {
+[data-theme="dark"] .breath-root {
+  --lung: #fff;
+}
+.breath-root.is-calm {
   --breath-amp: 0.6;
   animation-play-state: running;
 }
-.breath.is-breathing {
+.breath-root.is-breathing {
   --breath-amp: 1;
   animation-play-state: running;
 }
-.breath-glow {
-  scale: calc(1 + (0.22 * var(--breath) - 0.06) * var(--breath-amp));
-  opacity: calc(0.15 + 0.2 * var(--breath) * var(--breath-amp));
+
+/* Backdrop: the phase-colored light swells with each breath; a warm light in
+   the opposite corner moves against it, so the whole page flows. */
+.breath-bg {
+  scale: calc(1 + 0.22 * var(--breath) * var(--breath-amp));
+  opacity: calc(0.25 + 0.3 * var(--breath) * var(--breath-amp));
 }
-.breath-halo {
-  scale: calc(1 + 0.07 * var(--breath) * var(--breath-amp));
-  opacity: calc(0.4 * var(--breath) * var(--breath-amp));
+.breath-bg-counter {
+  scale: calc(1 + 0.14 * (1 - var(--breath)) * var(--breath-amp));
+}
+
+/* Ring layers */
+.breath-glow {
+  scale: calc(1 + (0.3 * var(--breath) - 0.08) * var(--breath-amp));
+  opacity: calc(0.16 + 0.22 * var(--breath) * var(--breath-amp));
+}
+.breath-blob {
+  scale: calc(1 + 0.24 * var(--breath) * var(--breath-amp));
+  opacity: calc(min(1, var(--breath-amp) * 3) * (0.2 + 0.22 * var(--breath)));
+  animation:
+    blob-morph 14s ease-in-out infinite,
+    spin 32s linear infinite;
+}
+.breath-blob.is-second {
+  animation-duration: 19s, 44s;
+  animation-direction: normal, reverse;
+}
+.breath-lung {
+  border-color: var(--lung);
+  scale: calc(1 + 0.09 * var(--breath) * var(--breath-amp));
+  opacity: min(1, calc(var(--breath-amp) * 4));
+  box-shadow:
+    0 0 calc(8px + 34px * var(--breath) * var(--breath-amp)) var(--accent),
+    inset 0 0 calc(6px + 22px * var(--breath) * var(--breath-amp)) var(--accent);
+}
+.breath-ripple {
+  border-color: var(--lung);
+  scale: calc(1.09 + 0.34 * var(--ripple));
+  opacity: calc((1 - var(--ripple)) * 0.85 * var(--breath-amp));
+}
+.breath-ripple.is-second {
+  scale: calc(1.09 + 0.24 * var(--ripple-2));
+  opacity: calc((1 - var(--ripple-2)) * 0.5 * var(--breath-amp));
+}
+.breath-orbit {
+  scale: calc(1 + 0.09 * var(--breath) * var(--breath-amp));
+  opacity: min(1, calc(var(--breath-amp) * 4));
+  animation: spin 40s linear infinite;
+}
+.breath-orbit > * > span {
+  background: var(--lung);
+  box-shadow: 0 0 10px var(--accent);
 }
 .breath-ring {
-  scale: calc(1 + 0.045 * var(--breath) * var(--breath-amp));
+  scale: calc(1 + 0.03 * var(--breath) * var(--breath-amp));
 }
-/* Full shorthands: a name-less `animation` shorthand gets minified to `none`. */
+
+/* Morphing repaints every frame, so it only flows during breaks; spinning and
+   orbiting are cheap and keep going whenever the ring breathes. */
+.breath-root:not(.is-breathing) .breath-blob {
+  animation-play-state: paused, running;
+}
+.breath-root:not(.is-breathing, .is-calm) :is(.breath-blob, .breath-orbit) {
+  animation-play-state: paused;
+}
+
 .breath-cue > * {
   grid-area: 1 / 1;
 }
 .breath-cue > .cue-in {
-  animation: cue-in 10s linear infinite paused;
+  opacity: clamp(0, calc((var(--inhale) - 0.5) * 2), 1);
 }
 .breath-cue > .cue-out {
-  animation: cue-out 10s linear infinite paused;
+  opacity: clamp(0, calc((0.5 - var(--inhale)) * 2), 1);
+}
+/* Keeps the timer readable over the brightest moment of the glow. */
+[data-theme="dark"] .breath-text {
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.45);
 }
 .breath-cue > .cue-still {
   display: none;
-}
-/* Run whenever the breath runs, so the cue is in step once a break starts. */
-.is-calm .breath-cue > *,
-.is-breathing .breath-cue > * {
-  animation-play-state: running;
 }
 
 @media (prefers-reduced-motion: reduce) {
