@@ -47,5 +47,17 @@ test.
 
 Push a branch to get a preview URL from Vercel; merge to `main` to deploy
 production. There's no build configuration: Vercel detects the FastAPI `app`
-in `app.py` and serves `public/` from its CDN. Step-by-step setup is in the
+in `app.py`, installs dependencies from `pyproject.toml`, and serves `public/`
+from its CDN. Nothing is stored server-side, so there's no database and there
+are no environment variables. First-time setup is in the
 [README](README.md#deploy-to-vercel).
+
+- **Check a deploy:** `/api/health` returns `{"status":"ok"}`, and a focus
+  block starts.
+- **From the CLI:** `npm i -g vercel`, `vercel login`, then `vercel` (preview)
+  or `vercel --prod`.
+- **Roll back:** Deployments → ⋯ → Promote to Production on an earlier deploy.
+- **HTTPS is required** for notifications, idle detection, and installing as
+  an app. Vercel URLs already use it.
+- **Commit the built CSS:** Vercel doesn't run Tailwind, so rebuild
+  `public/app.css` and commit it after changing templates or styles.
