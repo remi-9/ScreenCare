@@ -49,9 +49,18 @@ so the accessibility checklist below applies to every component.
 - **Soft glass cards**: subtle translucency and blur, generous radius
   (`rounded-3xl`), hairline borders instead of heavy shadows.
 - **Signature element: the ring.** A large SVG progress ring around the
-  timer. While focusing it fills smoothly. During a break it *breathes*
-  (4 s in, 6 s out), a quiet invitation to slow down. Under reduced motion it
-  simply shows progress.
+  timer. While focusing it fills smoothly. During a break the whole ring
+  *breathes*: glow, an outer halo, and the ring itself all move from one
+  `--breath` value on a sine curve (4 s in, 6 s out), with a "Breathe in… /
+  …and out" cue in step. The motion's strength fades in and out over 3 s,
+  so a break starts and ends without any jump. Outside breaks the animation is
+  paused, and under reduced motion the ring stays still with a static
+  "Breathe slowly" cue.
+- **Your colors.** Settings → Appearance has a *Focus color* and a *Break
+  color*: five curated swatches each, plus a custom color picker. Button text
+  switches between near-black and white automatically, whichever contrasts
+  better. The amber "postponed" color stays fixed, because it means
+  "overdue".
 - **Copy is kind and short.** "Time for a reset." "Anything come to mind?"
   No exclamation marks, no guilt, no streaks.
 
@@ -68,6 +77,15 @@ so the accessibility checklist below applies to every component.
   --radius-card: 1.5rem;
 }
 ```
+
+### Breathing, technically
+
+`--breath` and `--breath-amp` are registered with `@property` so the browser
+can interpolate them. Layers use `scale: calc(1 + k * var(--breath) *
+var(--breath-amp))`. Keep the cue spans rendered (never `display: none`), or
+their animation would restart out of step with the breath. Write `animation`
+shorthands with a name: Tailwind's minifier turns a name-less one into
+`animation: none`.
 
 ## Screens
 
