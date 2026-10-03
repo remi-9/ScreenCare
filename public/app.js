@@ -8,6 +8,42 @@ const GAP_MS = 120_000; // a silence longer than this means the user was away
 const EYE_REST_MS = 20_000;
 const RING = 2 * Math.PI * 108;
 
+// Defaults match the design tokens in styles/app.css.
+const DEFAULT_COLORS = { focus: "#8a81ef", recover: "#4bc39f" };
+const POSTPONE_COLOR = "#f2af48"; // deliberately not customizable: it signals "overdue"
+const PALETTE = {
+  focus: [
+    { name: "Violet", hex: "#8a81ef" },
+    { name: "Indigo", hex: "#6f86f0" },
+    { name: "Ocean", hex: "#3fa7d6" },
+    { name: "Rose", hex: "#ec7aa3" },
+    { name: "Coral", hex: "#f08a6c" },
+  ],
+  recover: [
+    { name: "Teal", hex: "#4bc39f" },
+    { name: "Sage", hex: "#8fbf7a" },
+    { name: "Sky", hex: "#57b8e3" },
+    { name: "Sand", hex: "#d8b37a" },
+    { name: "Lilac", hex: "#b59cf0" },
+  ],
+};
+const HEX = /^#[0-9a-f]{6}$/i;
+
+// Black or white, whichever reads better on `hex` (WCAG relative luminance).
+const inkFor = (hex) => {
+  const lin = (i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const L = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
+  return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? "#0c0a09" : "#ffffff";
+};
+
+const cleanColors = (colors) => ({
+  focus: HEX.test(colors?.focus) ? colors.focus.toLowerCase() : DEFAULT_COLORS.focus,
+  recover: HEX.test(colors?.recover) ? colors.recover.toLowerCase() : DEFAULT_COLORS.recover,
+});
+
 const load = () => {
   try {
     return JSON.parse(localStorage.getItem(STORE_KEY)) || {};
@@ -27,10 +63,17 @@ document.addEventListener("alpine:init", () => {
     const saved = load();
     return {
       RING,
+      PALETTE,
       session: saved.session || null,
       settings: { ...window.SCREENCARE.defaults, ...saved.settings },
       // Anyone with history has effectively been onboarded already.
-      prefs: { theme: "system", idle: false, onboarded: !!saved.history?.length, ...saved.prefs },
+      prefs: {
+        theme: "system",
+        idle: false,
+        onboarded: !!saved.history?.length,
+        ...saved.prefs,
+        colors: cleanColors(saved.prefs?.colors),
+      },
       history: saved.history || [],
       lastBeat: saved.lastBeat || 0,
       now: Date.now(),
@@ -211,10 +254,42 @@ document.addEventListener("alpine:init", () => {
 
       get accent() {
         const p = this.session.phase;
-        if (p === "breaking" || p === "idea_walk") return "var(--color-recover)";
-        if (p === "recovery_due") return this.postponed ? "var(--color-postpone)" : "var(--color-recover)";
-        if (this.overtime) return "var(--color-postpone)";
-        return "var(--color-focus)";
+        const { focus, recover } = this.prefs.colors;
+        if (p === "breaking" || p === "idea_walk") return recover;
+        if (p === "recovery_due") return this.postponed ? POSTPONE_COLOR : recover;
+        if (this.overtime) return POSTPONE_COLOR;
+        return focus;
+      },
+
+      get themeVars() {
+        const { focus, recover } = this.prefs.colors;
+        return {
+          "--accent": this.accent,
+          "--accent-ink": inkFor(this.accent),
+          "--color-focus": focus,
+          "--color-recover": recover,
+          "--recover-ink": inkFor(recover),
+        };
+      },
+
+      setColor(kind, hex) {
+        if (!HEX.test(hex)) return;
+        this.prefs.colors = { ...this.prefs.colors, [kind]: hex.toLowerCase() };
+        this.save();
+      },
+
+      isCustomColor(kind) {
+        return !PALETTE[kind].some((c) => c.hex === this.prefs.colors[kind]);
+      },
+
+      get isDefaultColors() {
+        const c = this.prefs.colors;
+        return c.focus === DEFAULT_COLORS.focus && c.recover === DEFAULT_COLORS.recover;
+      },
+
+      resetColors() {
+        this.prefs.colors = { ...DEFAULT_COLORS };
+        this.save();
       },
 
       get breathing() {
